@@ -10,7 +10,7 @@ interface TopHeaderProps {
   title?: string;
 }
 
-export const TopHeader: React.FC<TopHeaderProps> = ({ title }) => {
+export const TopHeader: React.FC<TopHeaderProps> = () => {
   const { user, alerts, signOutUser } = useFinance();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const activeAlerts = alerts.filter((a) => a.status === 'active');

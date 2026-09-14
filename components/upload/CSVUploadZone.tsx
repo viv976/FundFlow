@@ -8,7 +8,6 @@ import {
   sanitizeCSVValue,
   parseDate,
   parseAmount,
-  DetectedMapping,
 } from '@/lib/finance/csv-importer';
 import { recordUploadedFileDb } from '@/lib/supabase/db';
 import Papa from 'papaparse';

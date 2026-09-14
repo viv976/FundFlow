@@ -303,7 +303,7 @@ export function parseDate(
 
   // ISO Format: YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(clean)) {
-    const [y, m, d] = clean.split('-').map(Number);
+    const [, m, d] = clean.split('-').map(Number);
     if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
       return { date: clean, isValid: true };
     }
@@ -312,9 +312,9 @@ export function parseDate(
   // Split by slashes, dashes, or dots
   const parts = clean.split(/[\/\-\.]/);
   if (parts.length === 3) {
-    let p0 = parts[0];
-    let p1 = parts[1];
-    let p2 = parts[2];
+    const p0 = parts[0];
+    const p1 = parts[1];
+    const p2 = parts[2];
 
     // Case 1: YYYY/MM/DD
     if (p0.length === 4) {

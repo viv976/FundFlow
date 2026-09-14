@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { DatabaseTransaction } from '@/lib/supabase/types';
+import { isValidUUID } from '@/lib/validation';
+import { getUserSafeErrorMessage } from '@/lib/errors';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,9 +15,9 @@ export async function POST(req: NextRequest) {
       userId,
     } = body;
 
-    if (!workspaceId || typeof workspaceId !== 'string') {
+    if (!isValidUUID(workspaceId)) {
       return NextResponse.json(
-        { success: false, error: 'Workspace ID is required' },
+        { success: false, error: 'A valid Workspace UUID is required' },
         { status: 400 }
       );
     }
@@ -101,7 +103,7 @@ export async function POST(req: NextRequest) {
       };
 
       // Only pass id if it's a valid UUID
-      if (typeof t.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(t.id)) {
+      if (isValidUUID(t.id)) {
         payload.id = t.id;
       }
 
@@ -151,7 +153,7 @@ export async function POST(req: NextRequest) {
       workspaceId,
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Internal error processing transaction import';
+    const msg = getUserSafeErrorMessage(err, 'Internal error processing transaction import');
     console.error('Unhandled exception in POST /api/transactions/bulk:', err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }

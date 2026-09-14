@@ -360,6 +360,7 @@ export function calculateWhatIfScenario(
   const differenceMonths = Math.round((projectedRunway - currentRunway) * 10) / 10;
 
   const assumptions: string[] = [
+    `Scenario Model: ${_scenarioName || 'Custom What-If'}.`,
     `Current cash position of $${(currentCash / 1000000).toFixed(2)}M remains constant.`,
     `Current monthly baseline burn is $${(currentMonthlyBurn / 1000).toFixed(0)}K.`,
     `New monthly incremental cost is $${(netMonthlyCostImpact / 1000).toFixed(0)}K.`,
@@ -376,6 +377,43 @@ export function calculateWhatIfScenario(
     monthlyCostImpact: netMonthlyCostImpact,
     assumptions,
   };
+}
+
+/**
+ * Calculates total income across transactions (excluding failed status)
+ */
+export function calculateTotalInflow(transactions: Transaction[]): number {
+  if (!transactions || transactions.length === 0) return 0;
+  return transactions.reduce((acc, t) => {
+    if (t.status === 'failed') return acc;
+    return t.transaction_type === 'income' ? acc + Number(t.amount || 0) : acc;
+  }, 0);
+}
+
+/**
+ * Calculates total operating expenses across transactions (excluding failed status)
+ */
+export function calculateTotalOutflow(transactions: Transaction[]): number {
+  if (!transactions || transactions.length === 0) return 0;
+  return transactions.reduce((acc, t) => {
+    if (t.status === 'failed') return acc;
+    return t.transaction_type === 'expense' ? acc + Number(t.amount || 0) : acc;
+  }, 0);
+}
+
+/**
+ * Calculates net cash flow across all recorded transactions (Inflow - Outflow)
+ */
+export function calculateNetCashFlow(transactions: Transaction[]): number {
+  return calculateTotalInflow(transactions) - calculateTotalOutflow(transactions);
+}
+
+/**
+ * Calculates total expense volume from category breakdown items
+ */
+export function calculateTotalFromBreakdown(breakdown: ExpenseBreakdownItem[]): number {
+  if (!breakdown || breakdown.length === 0) return 0;
+  return breakdown.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 }
 
 /**

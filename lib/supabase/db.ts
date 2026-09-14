@@ -11,6 +11,8 @@ import {
   DatabaseUploadedFile,
 } from './types';
 import { Transaction, Alert, Workspace, UserProfile, TransactionSource } from '@/types/finance';
+import { isValidUUID } from '@/lib/validation';
+import { sanitizeContext } from '@/lib/errors';
 
 /**
  * Maps database transaction row to app Transaction model
@@ -58,7 +60,7 @@ export function mapAppTransactionToDb(
   };
 
   const rawId = id || ('id' in tx ? (tx as Transaction).id : undefined);
-  if (rawId && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(rawId)) {
+  if (isValidUUID(rawId)) {
     row.id = rawId;
   }
 
@@ -93,11 +95,7 @@ export async function fetchWorkspaceAndProfile(targetWorkspaceId?: string): Prom
 }> {
   if (!isSupabaseConfigured) return { workspace: null, workspaces: [], user: null };
 
-  const validTargetWsId =
-    typeof targetWorkspaceId === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(targetWorkspaceId)
-      ? targetWorkspaceId
-      : undefined;
+  const validTargetWsId = isValidUUID(targetWorkspaceId) ? targetWorkspaceId : undefined;
 
   try {
     // 1. Get current auth user if available
@@ -329,6 +327,7 @@ function logDiagnosticDbError(context: string, error: unknown, extraContext?: Re
   const details = (errObj.details as string) || 'none';
   const hint = (errObj.hint as string) || 'none';
   const status = (errObj.status as string | number) || 'none';
+  const cleanContext = sanitizeContext(extraContext);
 
   console.error(
     `[Supabase DB Diagnostic] Operation: ${context}\n` +
@@ -337,7 +336,7 @@ function logDiagnosticDbError(context: string, error: unknown, extraContext?: Re
     `  • Details: ${details}\n` +
     `  • Hint: ${hint}\n` +
     `  • Status: ${status}` +
-    (extraContext ? `\n  • Extra Context: ${JSON.stringify(extraContext)}` : '')
+    (cleanContext ? `\n  • Extra Context: ${JSON.stringify(cleanContext)}` : '')
   );
 }
 
@@ -586,9 +585,7 @@ export async function acknowledgeAlertDb(alertId: string, workspaceId?: string):
       }
     }
 
-    const isUuid =
-      typeof alertId === 'string' &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(alertId);
+    const isUuid = isValidUUID(alertId);
 
     if (!isUuid) {
       // Local/demo alert without Supabase record, acknowledge safely in UI
@@ -644,9 +641,7 @@ export async function markAllAlertsReadDb(workspaceId: string): Promise<boolean>
       }
     }
 
-    const isUuid =
-      typeof workspaceId === 'string' &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(workspaceId);
+    const isUuid = isValidUUID(workspaceId);
 
     if (!isUuid) {
       return true;

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { DatabaseWorkspace } from '@/lib/supabase/types';
+import { validateWorkspaceInput } from '@/lib/validation';
+import { getUserSafeErrorMessage } from '@/lib/errors';
 
 const DEFAULT_CATEGORIES = [
   { name: 'Customer Revenue', category_type: 'revenue', description: 'Customer and subscription revenue' },
@@ -15,47 +17,25 @@ const DEFAULT_CATEGORIES = [
   { name: 'Other', category_type: 'expense', description: 'Other operating expenses' },
 ];
 
-/**
- * Extracts a 3-letter currency code (e.g. "Indian Rupee (INR)" -> "INR", "USD" -> "USD")
- */
-function sanitizeCurrencyCode(input?: string): string {
-  if (!input || typeof input !== 'string') return 'USD';
-  const match = input.match(/\b([A-Z]{3})\b/i);
-  if (match) return match[1].toUpperCase();
-  const trimmed = input.trim().toUpperCase();
-  return trimmed.length === 3 ? trimmed : 'USD';
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({}));
+    const validation = validateWorkspaceInput(body);
+
+    if (!validation.isValid) {
+      return NextResponse.json(
+        { success: false, error: validation.errors[0].message, details: validation.errors },
+        { status: 400 }
+      );
+    }
+
     const {
-      name,
-      currency = 'USD',
-      startingCash = 500000,
-      alertRunwayThreshold = 6,
+      name: trimmedName,
+      currency: cleanCurrency,
+      startingCash: numCash,
+      alertRunwayThreshold: numThreshold,
       userId,
-    } = body;
-
-    // 1. Validation
-    if (!name || typeof name !== 'string' || !name.trim()) {
-      return NextResponse.json(
-        { success: false, error: 'Business / Company Legal Name is required' },
-        { status: 400 }
-      );
-    }
-
-    const trimmedName = name.trim();
-    const cleanCurrency = sanitizeCurrencyCode(currency);
-    const numCash = typeof startingCash === 'number' ? startingCash : parseFloat(String(startingCash)) || 0;
-    const numThreshold = typeof alertRunwayThreshold === 'number' ? alertRunwayThreshold : parseFloat(String(alertRunwayThreshold)) || 6;
-
-    if (numCash < 0) {
-      return NextResponse.json(
-        { success: false, error: 'Initial cash balance cannot be negative' },
-        { status: 400 }
-      );
-    }
+    } = validation.data;
 
     const supabase = createServerSupabaseClient();
 
@@ -212,7 +192,7 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     );
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Internal server error creating workspace';
+    const message = getUserSafeErrorMessage(err, 'Internal server error creating workspace');
     console.error('Unhandled exception in POST /api/workspaces:', err);
     return NextResponse.json(
       {

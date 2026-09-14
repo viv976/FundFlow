@@ -3,18 +3,13 @@
 import React from 'react';
 import { TransactionTable } from '@/components/transactions/TransactionTable';
 import { useFinance } from '@/lib/store/finance-context';
-import { formatCurrency } from '@/lib/finance/calculator';
+import { formatCurrency, calculateTotalInflow, calculateTotalOutflow } from '@/lib/finance/calculator';
 
 export default function TransactionsPage() {
   const { workspace, transactions, kpis } = useFinance();
 
-  const totalExpense = transactions
-    .filter((t) => t.transaction_type === 'expense')
-    .reduce((acc, t) => acc + Number(t.amount || 0), 0);
-
-  const totalIncome = transactions
-    .filter((t) => t.transaction_type === 'income')
-    .reduce((acc, t) => acc + Number(t.amount || 0), 0);
+  const totalExpense = calculateTotalOutflow(transactions);
+  const totalIncome = calculateTotalInflow(transactions);
 
   return (
     <div className="max-w-7xl mx-auto flex flex-col gap-6 animate-fadeIn pb-12 w-full">

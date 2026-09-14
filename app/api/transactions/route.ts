@@ -1,25 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { DatabaseTransaction } from '@/lib/supabase/types';
+import { isValidUUID, validateTransactionInput } from '@/lib/validation';
+import { getUserSafeErrorMessage } from '@/lib/errors';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { workspaceId, transaction, userId } = body;
 
-    if (!workspaceId || typeof workspaceId !== 'string') {
+    if (!isValidUUID(workspaceId)) {
       return NextResponse.json(
-        { success: false, error: 'Workspace ID is required' },
+        { success: false, error: 'A valid Workspace UUID is required' },
         { status: 400 }
       );
     }
 
-    if (!transaction || typeof transaction !== 'object') {
+    const validation = validateTransactionInput(transaction);
+    if (!validation.isValid) {
       return NextResponse.json(
-        { success: false, error: 'Transaction object is required' },
+        {
+          success: false,
+          error: validation.errors[0].message,
+          details: validation.errors,
+        },
         { status: 400 }
       );
     }
+
+    const validTx = validation.data;
 
     const supabase = createServerSupabaseClient();
 
@@ -74,23 +83,20 @@ export async function POST(req: NextRequest) {
     // 3. Prepare Database Payload
     const dbPayload: Partial<DatabaseTransaction> = {
       workspace_id: workspaceId,
-      transaction_date: String(transaction.transaction_date || new Date().toISOString().substring(0, 10)),
-      amount: Math.abs(Number(transaction.amount) || 0),
-      transaction_type: transaction.transaction_type === 'income' ? 'income' : 'expense',
-      category: typeof transaction.category === 'string' && transaction.category.trim() ? transaction.category.trim() : 'Other',
-      merchant: typeof transaction.merchant === 'string' && transaction.merchant.trim() ? transaction.merchant.trim() : null,
-      description: typeof transaction.description === 'string' && transaction.description.trim() ? transaction.description.trim() : 'Manual Transaction',
-      account_name: typeof transaction.account_name === 'string' ? transaction.account_name : transaction.external_reference || 'Operating Account',
-      currency: typeof transaction.currency === 'string' && transaction.currency.trim() ? transaction.currency.trim() : 'USD',
-      source: transaction.source === 'csv_import' || transaction.source === 'CSV' ? 'CSV' : 'Manual',
+      transaction_date: validTx.transaction_date,
+      amount: validTx.amount,
+      transaction_type: validTx.transaction_type,
+      category: validTx.category,
+      merchant: validTx.merchant || null,
+      description: validTx.description,
+      account_name: validTx.external_reference || 'Operating Account',
+      currency: validTx.currency,
+      source: validTx.source === 'csv_import' ? 'CSV' : 'Manual',
       is_recurring: false,
       created_by: targetUserId,
     };
 
-    if (
-      typeof transaction.id === 'string' &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(transaction.id)
-    ) {
+    if (isValidUUID(transaction.id)) {
       dbPayload.id = transaction.id;
     }
 
@@ -118,7 +124,7 @@ export async function POST(req: NextRequest) {
       transaction: inserted,
     });
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : 'Internal error creating transaction';
+    const msg = getUserSafeErrorMessage(err, 'Internal error creating transaction');
     console.error('[API /api/transactions] Unhandled exception:', err);
     return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }

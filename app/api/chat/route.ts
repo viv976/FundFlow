@@ -3,6 +3,8 @@ import { generateGroundedResponse } from '@/lib/ai/gemini-service';
 import { Transaction, Workspace } from '@/types/finance';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { DatabaseKnowledgeDocument, DatabaseDocumentChunk, DatabaseMonthlyFinancialSummary, DatabaseWorkspace } from '@/lib/supabase/types';
+import { validateChatInput, isValidUUID } from '@/lib/validation';
+import { getUserSafeErrorMessage } from '@/lib/errors';
 
 export async function POST(req: NextRequest) {
   const requestId = `req-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -16,9 +18,14 @@ export async function POST(req: NextRequest) {
       conversationId?: string;
     };
 
-    if (!message || typeof message !== 'string') {
-      return NextResponse.json({ error: 'Message prompt is required' }, { status: 400 });
+    const promptValidation = validateChatInput(message);
+    if (!promptValidation.isValid) {
+      return NextResponse.json(
+        { error: promptValidation.errors[0].message, details: promptValidation.errors },
+        { status: 400 }
+      );
     }
+    const cleanMessage = promptValidation.data;
 
     const supabase = createServerSupabaseClient();
 
@@ -31,7 +38,7 @@ export async function POST(req: NextRequest) {
       created_at: new Date().toISOString(),
     };
 
-    if (workspaceId) {
+    if (workspaceId && isValidUUID(workspaceId)) {
       const { data: wsData } = await supabase
         .from('workspaces')
         .select('*')
@@ -79,7 +86,7 @@ export async function POST(req: NextRequest) {
           .insert({
             workspace_id: activeWs.id,
             user_id: activeWs.owner_id,
-            title: message.substring(0, 50),
+            title: cleanMessage.substring(0, 50),
           })
           .select('id')
           .single();
@@ -92,7 +99,7 @@ export async function POST(req: NextRequest) {
         await supabase.from('ai_messages').insert({
           conversation_id: activeConvId,
           role: 'user',
-          content: message,
+          content: cleanMessage,
           grounded: false,
         });
       }
@@ -101,7 +108,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Generate Grounded AI Response
-    const aiResponse = await generateGroundedResponse(message, {
+    const aiResponse = await generateGroundedResponse(cleanMessage, {
       workspace: activeWs,
       transactions: transactions || [],
       monthlySummaries,
@@ -114,7 +121,7 @@ export async function POST(req: NextRequest) {
       JSON.stringify({
         requestId,
         workspaceId: activeWs.id,
-        currentQuestion: message,
+        currentQuestion: cleanMessage,
         detectedIntent: aiResponse.detectedIntent,
         groundingConfidence: aiResponse.groundingConfidence,
         retrievedChunkIds: aiResponse.retrievedChunkIds || [],
@@ -142,7 +149,7 @@ export async function POST(req: NextRequest) {
       conversationId: activeConvId,
     });
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Failed to process financial AI query';
+    const msg = getUserSafeErrorMessage(error, 'Failed to process financial AI query');
     console.error('AI Chat endpoint error:', error);
     return NextResponse.json(
       { error: msg, requestId },

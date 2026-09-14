@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/lib/store/finance-context';
-import { formatCurrency } from '@/lib/finance/calculator';
+import { formatCurrency, calculateTotalFromBreakdown } from '@/lib/finance/calculator';
 import { supabase } from '@/lib/supabase/client';
 import { DatabaseMonthlyFinancialSummary } from '@/lib/supabase/types';
 import Link from 'next/link';
@@ -11,7 +11,7 @@ export default function ReportsPage() {
   const { workspace, kpis, expenseBreakdown, transactions, exportTransactionsCSV, exportReportJSON } = useFinance();
   const [summaries, setSummaries] = useState<DatabaseMonthlyFinancialSummary[]>([]);
 
-  const totalExpense = expenseBreakdown.reduce((sum, item) => sum + item.amount, 0);
+  const totalExpense = calculateTotalFromBreakdown(expenseBreakdown);
 
   useEffect(() => {
     let ignore = false;
