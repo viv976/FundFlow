@@ -19,7 +19,7 @@ export default function LoginPage() {
 
     try {
       await signIn(email.trim(), password);
-      router.push('/');
+      router.push('/dashboard');
       router.refresh();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Invalid login credentials';
@@ -37,10 +37,10 @@ export default function LoginPage() {
 
     try {
       await signIn('alex.rivera@demo.fundflow.app', 'DemoPassword2026!');
-      router.push('/');
+      router.push('/dashboard');
       router.refresh();
     } catch {
-      router.push('/');
+      router.push('/dashboard');
     } finally {
       setIsLoading(false);
     }

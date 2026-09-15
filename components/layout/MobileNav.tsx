@@ -11,7 +11,7 @@ export const MobileNav: React.FC = () => {
   const unreadAlerts = alerts.filter((a) => a.status === 'active').length;
 
   const items = [
-    { label: 'Dashboard', href: '/', icon: 'dashboard' },
+    { label: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
     { label: 'Transactions', href: '/transactions', icon: 'receipt_long' },
     { label: 'Upload', href: '/upload', icon: 'cloud_upload' },
     { label: 'Ask AI', href: '/ask-ai', icon: 'smart_toy' },
@@ -22,7 +22,10 @@ export const MobileNav: React.FC = () => {
   return (
     <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-1 h-16 bg-primary border-t border-primary-container">
       {items.map((item) => {
-        const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+        const isActive =
+          item.href === '/dashboard'
+            ? pathname === '/dashboard'
+            : pathname.startsWith(item.href);
 
         return (
           <Link

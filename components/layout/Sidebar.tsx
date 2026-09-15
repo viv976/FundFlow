@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useFinance } from '@/lib/store/finance-context';
+import { DEMO_WORKSPACE } from '@/lib/store/demo-data';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
 interface NavItem {
@@ -13,7 +14,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: '/', icon: 'dashboard' },
+  { label: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
   { label: 'Transactions', href: '/transactions', icon: 'receipt_long' },
   { label: 'Reports & Trends', href: '/reports', icon: 'analytics' },
   { label: 'AI Co-Pilot', href: '/ask-ai', icon: 'smart_toy' },
@@ -25,8 +26,9 @@ const NAV_ITEMS: NavItem[] = [
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
-  const { user, alerts, signOutUser } = useFinance();
+  const { user, alerts, signOutUser, workspace } = useFinance();
 
+  const isDemo = workspace.id === DEMO_WORKSPACE.id;
   const unreadAlertsCount = alerts.filter((a) => a.status === 'active').length;
 
   return (
@@ -39,11 +41,18 @@ export const Sidebar: React.FC = () => {
           </span>
         </div>
         <div>
-          <span className="font-headline-md text-lg text-on-primary font-bold tracking-tight block">
-            FundFlow
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-headline-md text-lg text-on-primary font-bold tracking-tight block">
+              FundFlow
+            </span>
+            {isDemo && (
+              <span className="px-1.5 py-0.5 rounded bg-secondary-fixed/20 border border-secondary-fixed/40 text-secondary-fixed text-[9px] font-mono-data font-bold tracking-wide uppercase">
+                DEMO
+              </span>
+            )}
+          </div>
           <span className="text-[10px] font-label-md text-secondary-fixed uppercase tracking-wider block font-bold">
-            Multi-Tenant Ledger
+            {isDemo ? 'Simulated Workspace' : 'Multi-Tenant Ledger'}
           </span>
         </div>
       </div>
@@ -57,7 +66,9 @@ export const Sidebar: React.FC = () => {
       <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const isActive =
-            item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+            item.href === '/dashboard'
+              ? pathname === '/dashboard'
+              : pathname.startsWith(item.href);
 
           return (
             <Link
@@ -119,4 +130,3 @@ export const Sidebar: React.FC = () => {
     </aside>
   );
 };
-

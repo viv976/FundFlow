@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useFinance } from '@/lib/store/finance-context';
+import { DEMO_WORKSPACE } from '@/lib/store/demo-data';
 
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
@@ -11,14 +12,22 @@ interface TopHeaderProps {
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = () => {
-  const { user, alerts, signOutUser } = useFinance();
+  const { user, alerts, signOutUser, workspace } = useFinance();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const activeAlerts = alerts.filter((a) => a.status === 'active');
+  const isDemo = workspace.id === DEMO_WORKSPACE.id;
 
   return (
     <header className="md:hidden flex justify-between items-center px-4 py-3 w-full bg-surface border-b border-outline-variant sticky top-0 z-30 shrink-0">
-      <div className="flex-1 max-w-[200px]">
-        <WorkspaceSwitcher />
+      <div className="flex items-center gap-2 max-w-[220px]">
+        <div className="flex-1 min-w-0">
+          <WorkspaceSwitcher />
+        </div>
+        {isDemo && (
+          <span className="px-1.5 py-0.5 rounded bg-primary text-secondary-fixed text-[9px] font-mono-data font-bold uppercase tracking-wide shrink-0">
+            DEMO
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-3">

@@ -161,7 +161,7 @@ export default function OnboardingPage() {
         }
 
         // Navigate directly to dashboard with the new business
-        router.push('/');
+        router.push('/dashboard');
         router.refresh();
       } else {
         setError('Workspace could not be created. Please try again.');

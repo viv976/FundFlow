@@ -254,7 +254,7 @@ export default function AskAIPage() {
                     {msg.chartAction && (
                       <div className="pt-1">
                         <Link
-                          href="/"
+                          href="/dashboard"
                           className="inline-flex items-center gap-1 text-xs text-primary font-label-md font-semibold hover:underline"
                         >
                           <span className="material-symbols-outlined text-[14px]">show_chart</span>

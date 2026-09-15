@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full bg-background text-on-surface">
+    <html lang="en" className="bg-background text-on-surface">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -26,7 +26,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="h-full w-full overflow-hidden bg-background text-on-surface antialiased">
+      <body className="min-h-screen w-full bg-background text-on-surface antialiased">
         <AppShell>{children}</AppShell>
       </body>
     </html>
