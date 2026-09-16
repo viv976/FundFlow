@@ -4,6 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { Transaction } from '@/types/finance';
 import { useFinance } from '@/lib/store/finance-context';
 import { TransactionModal } from './TransactionModal';
+import { TransactionDetailModal } from './TransactionDetailModal';
 
 export const TransactionTable: React.FC = () => {
   const {
@@ -22,6 +23,7 @@ export const TransactionTable: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [detailTransaction, setDetailTransaction] = useState<Transaction | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
   // Extract unique categories
@@ -329,7 +331,17 @@ export const TransactionTable: React.FC = () => {
                         </button>
 
                         {activeMenuId === tx.id && (
-                          <div className="absolute right-6 top-8 w-32 bg-surface border border-outline-variant rounded-lg shadow-xl py-1 z-30 font-body-sm text-xs">
+                          <div className="absolute right-6 top-8 w-36 bg-surface border border-outline-variant rounded-lg shadow-xl py-1 z-30 font-body-sm text-xs">
+                            <button
+                              onClick={() => {
+                                setDetailTransaction(tx);
+                                setActiveMenuId(null);
+                              }}
+                              className="w-full text-left px-3 py-1.5 hover:bg-surface-container-low text-on-surface flex items-center gap-2"
+                            >
+                              <span className="material-symbols-outlined text-sm text-primary">visibility</span>
+                              View Details
+                            </button>
                             <button
                               onClick={() => handleEdit(tx)}
                               className="w-full text-left px-3 py-1.5 hover:bg-surface-container-low text-on-surface flex items-center gap-2"
@@ -398,6 +410,13 @@ export const TransactionTable: React.FC = () => {
           }
         }}
         initialData={editingTransaction}
+      />
+
+      {/* Transaction Detail View Modal */}
+      <TransactionDetailModal
+        isOpen={Boolean(detailTransaction)}
+        onClose={() => setDetailTransaction(null)}
+        transaction={detailTransaction}
       />
     </div>
   );

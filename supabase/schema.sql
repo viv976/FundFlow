@@ -66,6 +66,15 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 CREATE INDEX IF NOT EXISTS idx_transactions_workspace_date ON transactions(workspace_id, transaction_date DESC);
 CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(workspace_id, category);
+-- Canonical workspace transaction deduplication index (concurrency-safe)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_workspace_canonical_dedup
+ON transactions (
+    workspace_id,
+    transaction_date,
+    LOWER(TRIM(description)),
+    amount,
+    transaction_type
+);
 
 -- 7. Imports
 CREATE TABLE IF NOT EXISTS imports (
