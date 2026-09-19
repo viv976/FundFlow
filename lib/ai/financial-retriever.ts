@@ -4,6 +4,7 @@ import {
   calculateMonthlyBurn,
   calculateRunway,
   calculateCategoryBreakdown,
+  getCurrencySymbol,
 } from '@/lib/finance/calculator';
 import { ParsedIntent } from './intent-parser';
 
@@ -20,25 +21,27 @@ export interface RetrievedFinancialContext {
 
 export function retrieveFinancialContext(
   transactions: Transaction[],
-  intent: ParsedIntent
+  intent: ParsedIntent,
+  currency: string = 'USD'
 ): RetrievedFinancialContext {
   const cashOnHand = calculateCashOnHand(transactions);
   const monthlyBurn = calculateMonthlyBurn(transactions);
   const { runwayMonths, display } = calculateRunway(cashOnHand, monthlyBurn);
   const categoryBreakdown = calculateCategoryBreakdown(transactions);
+  const sym = getCurrencySymbol(currency);
 
   const citations: AICitation[] = [
     {
       id: 'cite-cash',
       type: 'calculation',
-      label: `Cash on Hand: $${(cashOnHand / 1000000).toFixed(2)}M`,
+      label: `Cash on Hand: ${sym}${(cashOnHand / 1000000).toFixed(2)}M`,
       amount: cashOnHand,
       details: 'Computed across verified bank ledger entries',
     },
     {
       id: 'cite-burn',
       type: 'calculation',
-      label: `Monthly Burn: $${(monthlyBurn / 1000).toFixed(0)}K/mo`,
+      label: `Monthly Burn: ${sym}${(monthlyBurn / 1000).toFixed(0)}K/mo`,
       amount: monthlyBurn,
       details: 'Average 30-90 day net operating outflow',
     },
@@ -46,7 +49,7 @@ export function retrieveFinancialContext(
       id: 'cite-runway',
       type: 'calculation',
       label: `Runway: ${display}`,
-      details: `Cash ($${(cashOnHand / 1000000).toFixed(2)}M) / Monthly Burn ($${(monthlyBurn / 1000).toFixed(0)}K)`,
+      details: `Cash (${sym}${(cashOnHand / 1000000).toFixed(2)}M) / Monthly Burn (${sym}${(monthlyBurn / 1000).toFixed(0)}K)`,
     },
   ];
 
@@ -64,7 +67,7 @@ export function retrieveFinancialContext(
       citations.push({
         id: `cite-cat-${targetCat}`,
         type: 'category_aggregation',
-        label: `${targetCat} Total: $${catTotal.toLocaleString()}`,
+        label: `${targetCat} Total: ${sym}${catTotal.toLocaleString()}`,
         amount: catTotal,
         details: `${relevantTransactions.length} recorded line items`,
       });
@@ -86,7 +89,7 @@ export function retrieveFinancialContext(
     citations.push({
       id: `cite-tx-${exp.id}`,
       type: 'transaction',
-      label: `${exp.description}: $${Number(exp.amount).toLocaleString()}`,
+      label: `${exp.description}: ${sym}${Number(exp.amount).toLocaleString()}`,
       amount: Number(exp.amount),
       date_range: exp.transaction_date,
       details: `Category: ${exp.category}`,

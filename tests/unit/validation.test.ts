@@ -84,6 +84,50 @@ describe('Validation Boundaries', () => {
         expect(invalid.errors.some((e) => e.field === 'transaction_type')).toBe(true);
       }
     });
+
+    it('preserves authoritative statuses: completed, pending, failed, reconciled', () => {
+      const statuses = ['completed', 'pending', 'failed', 'reconciled'] as const;
+      for (const st of statuses) {
+        const result = validateTransactionInput({
+          transaction_date: '2025-01-10',
+          description: `Test ${st}`,
+          amount: 100,
+          transaction_type: 'expense',
+          status: st,
+        });
+        expect(result.isValid).toBe(true);
+        if (result.isValid) {
+          expect(result.data.status).toBe(st);
+        }
+      }
+    });
+
+    it('defaults omitted status to completed', () => {
+      const result = validateTransactionInput({
+        transaction_date: '2025-01-10',
+        description: 'No status provided',
+        amount: 100,
+        transaction_type: 'expense',
+      });
+      expect(result.isValid).toBe(true);
+      if (result.isValid) {
+        expect(result.data.status).toBe('completed');
+      }
+    });
+
+    it('rejects invalid transaction statuses such as cancelled', () => {
+      const invalid = validateTransactionInput({
+        transaction_date: '2025-01-10',
+        description: 'Cancelled charge',
+        amount: 100,
+        transaction_type: 'expense',
+        status: 'cancelled',
+      });
+      expect(invalid.isValid).toBe(false);
+      if (!invalid.isValid) {
+        expect(invalid.errors.some((e) => e.field === 'status')).toBe(true);
+      }
+    });
   });
 
   describe('validateWorkspaceInput', () => {

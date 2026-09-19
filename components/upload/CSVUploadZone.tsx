@@ -338,6 +338,7 @@ export const CSVUploadZone: React.FC = () => {
           duplicates={completionResult.duplicates}
           onReset={handleReset}
           workspaceName={workspace.name}
+          currency={workspace.currency || 'USD'}
         />
       )}
     </div>

@@ -59,10 +59,20 @@ export async function PATCH(
     if (updates.category !== undefined) dbPayload.category = updates.category;
     if (updates.amount !== undefined) dbPayload.amount = Math.abs(Number(updates.amount));
     if (updates.transaction_type) dbPayload.transaction_type = updates.transaction_type;
+    if (updates.status !== undefined) dbPayload.status = updates.status;
     if (updates.currency) dbPayload.currency = updates.currency;
     dbPayload.updated_at = new Date().toISOString();
 
-    const { error } = await supabase.from('transactions').update(dbPayload).eq('id', id);
+    let { error } = await supabase.from('transactions').update(dbPayload).eq('id', id);
+    if (error && (error.code === 'PGRST204' || error.message?.includes("'status' column"))) {
+      const fallbackPayload = { ...dbPayload };
+      delete fallbackPayload.status;
+      if (updates.status) {
+        fallbackPayload.account_name = `${updates.external_reference || 'Operating Account'} [status:${updates.status}]`;
+      }
+      const retry = await supabase.from('transactions').update(fallbackPayload).eq('id', id);
+      error = retry.error;
+    }
 
     if (error) {
       console.error('[API /api/transactions/:id PATCH] Error:', {

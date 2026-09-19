@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Transaction, TransactionType, TransactionStatus } from '@/types/finance';
+import { useFinance } from '@/lib/store/finance-context';
+import { getCurrencySymbol } from '@/lib/finance/calculator';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -31,6 +33,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   onSave,
   initialData,
 }) => {
+  const { workspace } = useFinance();
+  const currency = initialData?.currency || workspace?.currency || 'USD';
+  const currencySymbol = getCurrencySymbol(currency);
+
   const [prevInitialData, setPrevInitialData] = useState<Transaction | null | undefined>(undefined);
   const [description, setDescription] = useState(initialData?.description || '');
   const [merchant, setMerchant] = useState(initialData?.merchant || '');
@@ -79,7 +85,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       return;
     }
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setError('Please enter a valid amount greater than $0.00.');
+      setError(`Please enter a valid amount greater than ${currencySymbol}0.00.`);
       return;
     }
 
@@ -89,7 +95,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         description: description.trim(),
         merchant: merchant.trim() || undefined,
         amount: parsedAmount,
-        currency: 'USD',
+        currency,
         category,
         transaction_type: type,
         status,
@@ -193,11 +199,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             {/* Amount */}
             <div>
               <label className="block text-xs font-label-md text-on-surface font-semibold mb-1.5">
-                Amount (USD) <span className="text-error">*</span>
+                Amount ({currency}) <span className="text-error">*</span>
               </label>
               <div className="relative rounded-xl shadow-xs">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-on-surface-variant font-mono-data font-semibold">
-                  $
+                  {currencySymbol}
                 </div>
                 <input
                   type="number"
@@ -318,7 +324,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               >
                 <option value="completed">Completed / Settled</option>
                 <option value="pending">Pending Settlement</option>
-                <option value="cancelled">Cancelled</option>
+                <option value="reconciled">Reconciled</option>
+                <option value="failed">Failed / Voided</option>
               </select>
             </div>
           </div>

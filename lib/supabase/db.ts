@@ -10,7 +10,7 @@ import {
   DatabaseDocumentChunk,
   DatabaseUploadedFile,
 } from './types';
-import { Transaction, Alert, Workspace, UserProfile, TransactionSource } from '@/types/finance';
+import { Transaction, Alert, Workspace, UserProfile, TransactionSource, TransactionStatus } from '@/types/finance';
 import { isValidUUID } from '@/lib/validation';
 import { sanitizeContext } from '@/lib/errors';
 
@@ -19,6 +19,21 @@ import { sanitizeContext } from '@/lib/errors';
  */
 export function mapDatabaseTransaction(dbTx: DatabaseTransaction): Transaction {
   const src: TransactionSource = dbTx.source === 'CSV' ? 'csv_import' : 'manual';
+  const validStatuses: TransactionStatus[] = ['completed', 'pending', 'failed', 'reconciled'];
+
+  let status: TransactionStatus = 'completed';
+  let externalRef = dbTx.account_name || undefined;
+
+  if (dbTx.status && validStatuses.includes(dbTx.status as TransactionStatus)) {
+    status = dbTx.status as TransactionStatus;
+  } else if (externalRef) {
+    const match = externalRef.match(/^(.*?)(?:\s*\[status:(completed|pending|failed|reconciled)\])$/);
+    if (match) {
+      externalRef = match[1].trim() || undefined;
+      status = match[2] as TransactionStatus;
+    }
+  }
+
   return {
     id: dbTx.id,
     workspace_id: dbTx.workspace_id,
@@ -29,9 +44,9 @@ export function mapDatabaseTransaction(dbTx: DatabaseTransaction): Transaction {
     amount: Number(dbTx.amount),
     currency: dbTx.currency || 'USD',
     transaction_type: dbTx.transaction_type,
-    status: 'completed',
+    status,
     source: src,
-    external_reference: dbTx.account_name || undefined,
+    external_reference: externalRef,
     created_at: dbTx.created_at,
     updated_at: dbTx.updated_at,
   };
@@ -55,6 +70,7 @@ export function mapAppTransactionToDb(
     description: tx.description || '',
     account_name: tx.external_reference || 'Operating Account',
     currency: tx.currency || 'USD',
+    status: tx.status || 'completed',
     source: tx.source === 'csv_import' ? 'CSV' : 'Manual',
     is_recurring: false,
   };
@@ -390,7 +406,11 @@ export async function insertTransactionDb(
       return null;
     }
 
-    return mapDatabaseTransaction(data as DatabaseTransaction);
+    const mapped = mapDatabaseTransaction(data as DatabaseTransaction);
+    if (!mapped.status && tx.status) {
+      mapped.status = tx.status;
+    }
+    return mapped;
   } catch (e) {
     logDiagnosticDbError('insertTransactionDb (exception)', e);
     return null;
@@ -439,6 +459,7 @@ export async function updateTransactionDb(
     if (updates.category !== undefined) dbPayload.category = updates.category;
     if (updates.amount !== undefined) dbPayload.amount = Math.abs(Number(updates.amount));
     if (updates.transaction_type) dbPayload.transaction_type = updates.transaction_type;
+    if (updates.status !== undefined) dbPayload.status = updates.status;
     if (updates.currency) dbPayload.currency = updates.currency;
     dbPayload.updated_at = new Date().toISOString();
 

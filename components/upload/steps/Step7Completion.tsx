@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { getCurrencySymbol } from '@/lib/finance/calculator';
 
 interface Step7CompletionProps {
   importedCount: number;
@@ -11,6 +12,7 @@ interface Step7CompletionProps {
   duplicates: { row: number; description: string; amount: number; fingerprint: string }[];
   onReset: () => void;
   workspaceName: string;
+  currency?: string;
 }
 
 export const Step7Completion: React.FC<Step7CompletionProps> = ({
@@ -21,6 +23,7 @@ export const Step7Completion: React.FC<Step7CompletionProps> = ({
   duplicates,
   onReset,
   workspaceName,
+  currency = 'USD',
 }) => {
   return (
     <div className="space-y-6 animate-fadeIn">
@@ -150,7 +153,7 @@ export const Step7Completion: React.FC<Step7CompletionProps> = ({
                     <tr key={idx} className="hover:bg-surface-bright/40">
                       <td className="py-2 px-3 text-center text-outline">#{dup.row}</td>
                       <td className="py-2 px-3 font-sans text-on-surface truncate max-w-[200px]">{dup.description}</td>
-                      <td className="py-2 px-3 text-right text-on-surface">${dup.amount.toFixed(2)}</td>
+                      <td className="py-2 px-3 text-right text-on-surface">{getCurrencySymbol(currency)}{dup.amount.toFixed(2)}</td>
                       <td className="py-2 px-3 text-outline truncate max-w-[240px] text-[10px]">{dup.fingerprint}</td>
                     </tr>
                   ))}

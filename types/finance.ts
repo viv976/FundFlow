@@ -71,21 +71,30 @@ export interface AlertPreferences {
 export interface FinancialKPIs {
   cashOnHand: number;
   cashChangePercent: number; // e.g. +5.2%
+  cashChangeDisplay?: string;
   monthlyBurn: number;
   burnChangePercent: number; // e.g. -2.1%
+  burnChangeDisplay?: string;
   runwayMonths: number;
   runwayDisplay: string; // "14 Mos" or "Infinite" or "No data"
-  momGrowthPercent: number; // e.g. +12.4%
+  momGrowthPercent: number | null; // null when insufficient data or pre-revenue
+  momGrowthStatus: 'active' | 'insufficient_data' | 'pre_revenue' | 'first_revenue_period';
   growthTargetPercent: number; // e.g. +1.5%
   isCashFlowPositive: boolean;
   hasSufficientData: boolean;
+  completedMonthsCount: number;
+  reportingAnchorMonth?: string;
 }
 
 export interface ProjectionMonth {
-  month: string; // e.g. "Jan", "Feb", "Apr (Now)", "May"
+  month: string; // e.g. "Jan", "Feb", "Apr (Current)", "May"
   actual?: number;
   forecast?: number;
   isCurrent?: boolean;
+  isForecast?: boolean;
+  upperBand?: number;
+  lowerBand?: number;
+  netFlow?: number;
 }
 
 export interface CashFlowProjection {
@@ -93,6 +102,71 @@ export interface CashFlowProjection {
   currentCash: number;
   projectedRunway: number;
   monthlyNetBurn: number;
+  status: 'active' | 'insufficient_data';
+  forecastMethodology: string;
+  hasSufficientData: boolean;
+}
+
+export type HealthCategory = 'Strong' | 'Moderate' | 'Watchlist' | 'Critical' | 'Insufficient Data';
+
+export interface HealthFactorContribution {
+  name: string;
+  score: number;
+  maxScore: number;
+  weightPercent: number;
+  status: 'healthy' | 'caution' | 'critical' | 'neutral';
+  description: string;
+  metricValue: string;
+}
+
+export interface FinancialHealthScore {
+  score: number | null; // null when insufficient data
+  maxScore: number;
+  category: HealthCategory;
+  factors: HealthFactorContribution[];
+  methodology: string;
+  hasSufficientData: boolean;
+  summary: string;
+}
+
+export interface AttentionItem {
+  id: string;
+  ruleId: string;
+  severity: AlertSeverity;
+  title: string;
+  detectedIssue: string;
+  supportingMetric: string;
+  affectedCategory?: string;
+  affectedTransactions?: Array<{
+    id: string;
+    description: string;
+    amount: number;
+    transaction_date: string;
+  }>;
+  suggestedAction: string;
+  actionType?: 'review_expenses' | 'adjust_runway' | 'audit_category' | 'view_transactions';
+}
+
+export interface FinancialThresholdConfig {
+  runwayCriticalMonths: number;
+  runwayWarningMonths: number;
+  expenseSpikePercent: number;
+  minExpenseSpikeAmount: number;
+  categoryConcentrationPercent: number;
+  negativeNetFlowThreshold: number;
+}
+
+export interface MetricExplanation {
+  key: 'cash' | 'burn' | 'runway' | 'growth';
+  title: string;
+  currentDisplay: string;
+  formula: string;
+  formulaSteps: Array<{ label: string; value: string; operation?: string }>;
+  methodology: string;
+  burnMethodology?: string;
+  comparisonPeriod: string;
+  hasSufficientData: boolean;
+  statusLabel?: string;
 }
 
 export interface ExpenseBreakdownItem {

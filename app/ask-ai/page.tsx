@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useFinance } from '@/lib/store/finance-context';
 import { AIMessage } from '@/types/finance';
-import { formatCurrency, calculateWhatIfScenario } from '@/lib/finance/calculator';
+import { formatCurrency, calculateWhatIfScenario, getCurrencySymbol } from '@/lib/finance/calculator';
 import Link from 'next/link';
 
 const QUICK_PROMPTS = [
@@ -64,7 +64,8 @@ export default function AskAIPage() {
     kpis.monthlyBurn,
     Math.round((scenarioHires * scenarioSalary) / 12),
     scenarioSpendChange,
-    `Hiring ${scenarioHires} person(s)`
+    `Hiring ${scenarioHires} person(s)`,
+    workspace.currency
   );
 
   const scrollToBottom = () => {
@@ -369,7 +370,7 @@ export default function AskAIPage() {
               <div className="flex justify-between text-xs font-label-md">
                 <span className="text-on-surface-variant font-semibold">Avg Annual Salary</span>
                 <span className="font-mono-data text-primary font-bold">
-                  ${(scenarioSalary / 1000).toFixed(0)}k/yr
+                  {getCurrencySymbol(workspace.currency)}{(scenarioSalary / 1000).toFixed(0)}k/yr
                 </span>
               </div>
               <input
@@ -388,7 +389,7 @@ export default function AskAIPage() {
               <div className="flex justify-between text-xs font-label-md">
                 <span className="text-on-surface-variant font-semibold">Monthly Spend Delta</span>
                 <span className="font-mono-data text-primary font-bold">
-                  {scenarioSpendChange >= 0 ? '+' : '-'}${Math.abs(scenarioSpendChange).toLocaleString()}/mo
+                  {scenarioSpendChange >= 0 ? '+' : '-'}{getCurrencySymbol(workspace.currency)}{Math.abs(scenarioSpendChange).toLocaleString()}/mo
                 </span>
               </div>
               <input
@@ -438,7 +439,7 @@ export default function AskAIPage() {
                 <div className="flex justify-between">
                   <span>New Total Burn:</span>
                   <span className="font-mono-data font-semibold text-on-surface">
-                    {formatCurrency(scenarioResult.newMonthlyBurn)}/mo
+                    {formatCurrency(scenarioResult.newMonthlyBurn, workspace.currency)}/mo
                   </span>
                 </div>
               </div>
@@ -448,7 +449,7 @@ export default function AskAIPage() {
             <button
               onClick={() =>
                 handleSendMessage(
-                  `What if I hire ${scenarioHires} engineer(s) at $${scenarioSalary.toLocaleString()}/yr?`
+                  `What if I hire ${scenarioHires} engineer(s) at ${getCurrencySymbol(workspace.currency)}${scenarioSalary.toLocaleString()}/yr?`
                 )
               }
               className="w-full py-2.5 border border-primary text-primary hover:bg-primary hover:text-on-primary rounded-lg font-label-md text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"

@@ -11,6 +11,9 @@ import {
   ExpenseBreakdownItem,
   CashFlowProjection,
   CSVImportResult,
+  FinancialHealthScore,
+  AttentionItem,
+  MetricExplanation,
 } from '@/types/finance';
 import {
   DEMO_WORKSPACE,
@@ -22,7 +25,10 @@ import {
   calculateAllKPIs,
   generateCashFlowProjection,
   calculateCategoryBreakdown,
-} from '@/lib/finance/calculator';
+  calculateFinancialHealth,
+  evaluateAttentionItems,
+  getMetricExplanation,
+} from '@/lib/finance';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import {
   fetchWorkspaceAndProfile,
@@ -48,6 +54,9 @@ interface FinanceContextType {
   kpis: FinancialKPIs;
   cashFlowProjection: CashFlowProjection;
   expenseBreakdown: ExpenseBreakdownItem[];
+  financialHealth: FinancialHealthScore;
+  attentionItems: AttentionItem[];
+  getMetricDetails: (key: 'cash' | 'burn' | 'runway' | 'growth') => MetricExplanation;
   isLoading: boolean;
   switchWorkspace: (workspaceId: string) => Promise<void>;
   refreshWorkspaces: (targetWorkspaceId?: string) => Promise<void>;
@@ -75,7 +84,20 @@ const STORAGE_KEYS = {
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([DEMO_WORKSPACE]);
-  const [workspace, setWorkspace] = useState<Workspace>(DEMO_WORKSPACE);
+  const [workspace, setWorkspace] = useState<Workspace>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEYS.WORKSPACE);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === 'object' && parsed.id) {
+            return parsed;
+          }
+        }
+      } catch {}
+    }
+    return DEMO_WORKSPACE;
+  });
   const [user, setUser] = useState<UserProfile>(DEMO_USER);
   const [transactions, setTransactions] = useState<Transaction[]>(DEMO_TRANSACTIONS);
   const [alerts, setAlerts] = useState<Alert[]>(DEMO_ALERTS);
@@ -276,12 +298,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [transactions, workspace.starting_cash]
   );
   const cashFlowProjection = useMemo(
-    () => generateCashFlowProjection(kpis.cashOnHand, kpis.monthlyBurn),
-    [kpis.cashOnHand, kpis.monthlyBurn]
+    () => generateCashFlowProjection(transactions, workspace.starting_cash, 6, workspace.currency),
+    [transactions, workspace.starting_cash, workspace.currency]
   );
   const expenseBreakdown = useMemo(
     () => calculateCategoryBreakdown(transactions),
     [transactions]
+  );
+  const financialHealth = useMemo(
+    () => calculateFinancialHealth(transactions, workspace.starting_cash, workspace.currency),
+    [transactions, workspace.starting_cash, workspace.currency]
+  );
+  const attentionItems = useMemo(
+    () => evaluateAttentionItems(transactions, workspace),
+    [transactions, workspace]
+  );
+  const getMetricDetails = useCallback(
+    (key: 'cash' | 'burn' | 'runway' | 'growth') => getMetricExplanation(key, transactions, workspace),
+    [transactions, workspace]
   );
 
   // Evaluate risk alerts automatically when transactions change
@@ -341,7 +375,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         try {
           const inserted = await insertTransactionDb(txData, workspace.id);
           if (inserted) {
-            const finalUpdated = updated.map((t) => (t.id === tempId ? inserted : t));
+            const finalUpdated = updated.map((t) =>
+              t.id === tempId ? { ...inserted, status: txData.status || inserted.status } : t
+            );
             persistTransactions(finalUpdated);
           }
         } catch (err) {
@@ -526,6 +562,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       kpis,
       cashFlowProjection,
       expenseBreakdown,
+      financialHealth,
+      attentionItems,
+      getMetricDetails,
       isLoading,
       switchWorkspace,
       refreshWorkspaces,
@@ -551,6 +590,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       kpis,
       cashFlowProjection,
       expenseBreakdown,
+      financialHealth,
+      attentionItems,
+      getMetricDetails,
       isLoading,
       switchWorkspace,
       refreshWorkspaces,

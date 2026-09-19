@@ -50,6 +50,7 @@ export interface DatabaseTransaction {
   description: string;
   account_name: string | null;
   currency: string;
+  status?: 'completed' | 'pending' | 'failed' | 'reconciled';
   source: string;
   source_file_id: string | null;
   is_recurring: boolean;

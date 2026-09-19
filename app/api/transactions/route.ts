@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
       account_name: validTx.external_reference || 'Operating Account',
       currency: validTx.currency,
       source: validTx.source === 'csv_import' ? 'CSV' : 'Manual',
+      status: validTx.status,
       is_recurring: false,
       created_by: targetUserId,
     };
@@ -100,23 +101,55 @@ export async function POST(req: NextRequest) {
       dbPayload.id = transaction.id;
     }
 
-    const { data: inserted, error: insErr } = await supabase
+    let inserted: DatabaseTransaction | null = null;
+    const { data: insData, error: insErr } = await supabase
       .from('transactions')
       .insert(dbPayload)
       .select()
       .single();
 
     if (insErr) {
-      console.error('[API /api/transactions] DB insert error:', {
-        message: insErr.message,
-        code: insErr.code,
-        details: insErr.details,
-        hint: insErr.hint,
-      });
-      return NextResponse.json(
-        { success: false, error: `Database error: ${insErr.message}` },
-        { status: 500 }
-      );
+      // Check if remote schema cache is missing the 'status' column (PGRST204)
+      if (insErr.code === 'PGRST204' || insErr.message?.includes("'status' column")) {
+        const fallbackPayload = { ...dbPayload };
+        delete fallbackPayload.status;
+        if (validTx.status && validTx.status !== 'completed') {
+          const baseAcc = validTx.external_reference || 'Operating Account';
+          fallbackPayload.account_name = `${baseAcc} [status:${validTx.status}]`;
+        }
+        const { data: retryData, error: retryErr } = await supabase
+          .from('transactions')
+          .insert(fallbackPayload)
+          .select()
+          .single();
+
+        if (retryErr) {
+          console.error('[API /api/transactions] DB insert retry error:', {
+            message: retryErr.message,
+            code: retryErr.code,
+            details: retryErr.details,
+            hint: retryErr.hint,
+          });
+          return NextResponse.json(
+            { success: false, error: `Database error: ${retryErr.message}` },
+            { status: 500 }
+          );
+        }
+        inserted = retryData ? ({ ...retryData, status: validTx.status } as DatabaseTransaction) : null;
+      } else {
+        console.error('[API /api/transactions] DB insert error:', {
+          message: insErr.message,
+          code: insErr.code,
+          details: insErr.details,
+          hint: insErr.hint,
+        });
+        return NextResponse.json(
+          { success: false, error: `Database error: ${insErr.message}` },
+          { status: 500 }
+        );
+      }
+    } else {
+      inserted = insData as DatabaseTransaction;
     }
 
     return NextResponse.json({

@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction } from '@/types/finance';
 import { useFinance } from '@/lib/store/finance-context';
+import { getCurrencySymbol } from '@/lib/finance/calculator';
 import { TransactionModal } from './TransactionModal';
 import { TransactionDetailModal } from './TransactionDetailModal';
 
@@ -13,6 +14,7 @@ export const TransactionTable: React.FC = () => {
     updateTransaction,
     deleteTransaction,
     exportTransactionsCSV,
+    workspace,
   } = useFinance();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -297,7 +299,7 @@ export const TransactionTable: React.FC = () => {
                           isIncome ? 'text-secondary font-semibold' : 'text-on-surface'
                         }`}
                       >
-                        {isIncome ? '+' : '-'}${Number(tx.amount).toLocaleString('en-US', {
+                        {isIncome ? '+' : '-'}{getCurrencySymbol(tx.currency || workspace.currency)}{Number(tx.amount).toLocaleString('en-US', {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
@@ -388,7 +390,10 @@ export const TransactionTable: React.FC = () => {
                   tx.transaction_type === 'income' ? 'text-secondary' : 'text-on-surface'
                 }`}
               >
-                {tx.transaction_type === 'income' ? '+' : '-'}${Number(tx.amount).toLocaleString()}
+                {tx.transaction_type === 'income' ? '+' : '-'}{getCurrencySymbol(tx.currency || workspace.currency)}{Number(tx.amount).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
               </div>
             </div>
           ))}

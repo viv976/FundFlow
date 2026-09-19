@@ -4,13 +4,18 @@ import {
   ExpenseBreakdownItem,
   CashFlowProjection,
   ScenarioCalculationResult,
-  ProjectionMonth,
 } from '@/types/finance';
+import {
+  getReportingAnchorAndCompletedMonths,
+  getMonthlyTotalsMap,
+} from './financial-health';
+import { generateCashFlowProjection as generateProjectionEngine } from './projections';
 
 const BASELINE_STARTING_CASH = 1240000; // $1.24M default baseline for startup demo
 
 /**
- * Calculates current cash on hand based on starting balance + all recorded transactions
+ * Calculates current cash on hand based on starting balance + all recorded non-failed transactions.
+ * Uses the full inception horizon.
  */
 export function calculateCashOnHand(
   transactions: Transaction[],
@@ -21,7 +26,7 @@ export function calculateCashOnHand(
     return effectiveBaseline;
   }
 
-  // Sum all income transactions and subtract all expense transactions
+  // Sum all income transactions and subtract all expense transactions for active (non-failed) rows
   const netFlow = transactions.reduce((acc, tx) => {
     if (tx.status === 'failed') return acc;
     if (tx.transaction_type === 'income') {
@@ -35,74 +40,82 @@ export function calculateCashOnHand(
 }
 
 /**
- * Calculates average monthly burn (expenses) over the recent window
+ * Calculates Average Monthly Outflow across preceding completed calendar months (up to monthsWindow).
+ * Calendar gaps strictly count with $0 expense.
+ */
+export function calculateMonthlyGrossOutflow(
+  transactions: Transaction[],
+  monthsWindow: number = 3
+): number {
+  const activeTxs = (transactions || []).filter((t) => t.status !== 'failed');
+  if (activeTxs.length === 0) return 0;
+
+  const { completedMonths } = getReportingAnchorAndCompletedMonths(activeTxs);
+  const { outflows } = getMonthlyTotalsMap(activeTxs);
+
+  if (completedMonths.length === 0) {
+    if (outflows.size === 0) return 0;
+    const total = Array.from(outflows.values()).reduce((sum, v) => sum + v, 0);
+    return Math.round(total / outflows.size);
+  }
+
+  const targetMonths = completedMonths.slice(0, Math.max(1, monthsWindow));
+
+  let sum = 0;
+  for (const m of targetMonths) {
+    sum += outflows.get(m) || 0;
+  }
+
+  return Math.round(sum / targetMonths.length);
+}
+
+/**
+ * Alias for calculateMonthlyGrossOutflow for backwards compatibility.
  */
 export function calculateMonthlyBurn(
   transactions: Transaction[],
   monthsWindow: number = 3
 ): number {
-  if (!transactions || transactions.length === 0) {
-    return 85000; // Default startup burn $85k
-  }
-
-  // Filter completed/pending expenses
-  const expenses = transactions.filter(
-    (tx) => tx.transaction_type === 'expense' && tx.status !== 'failed'
-  );
-
-  if (expenses.length === 0) return 0;
-
-  // Group by month
-  const monthlyExpensesMap = new Map<string, number>();
-  for (const tx of expenses) {
-    const monthKey = tx.transaction_date.substring(0, 7); // YYYY-MM
-    const current = monthlyExpensesMap.get(monthKey) || 0;
-    monthlyExpensesMap.set(monthKey, current + Number(tx.amount));
-  }
-
-  const sortedMonths = Array.from(monthlyExpensesMap.keys()).sort().reverse();
-  const recentMonths = sortedMonths.slice(0, Math.max(1, monthsWindow));
-
-  if (recentMonths.length === 0) return 85000;
-
-  const totalRecentExpense = recentMonths.reduce(
-    (sum, m) => sum + (monthlyExpensesMap.get(m) || 0),
-    0
-  );
-
-  return Math.round(totalRecentExpense / recentMonths.length);
+  return calculateMonthlyGrossOutflow(transactions, monthsWindow);
 }
 
 /**
- * Calculates monthly net burn (Expenses - Income)
+ * Calculates Average Monthly Net Burn across preceding completed calendar months.
+ * Formula: NB_m = max(0, O_m - I_m); AverageNB = (Σ NB_m) / k.
+ */
+export function calculateMonthlyNetBurn(
+  transactions: Transaction[],
+  monthsWindow: number = 3
+): number {
+  const activeTxs = (transactions || []).filter((t) => t.status !== 'failed');
+  if (activeTxs.length === 0) return 0;
+
+  const { completedMonths } = getReportingAnchorAndCompletedMonths(activeTxs);
+  if (completedMonths.length === 0) return 0;
+
+  const { inflows, outflows } = getMonthlyTotalsMap(activeTxs);
+  const targetMonths = completedMonths.slice(0, Math.max(1, monthsWindow));
+
+  let totalDeficit = 0;
+  for (const m of targetMonths) {
+    const o = outflows.get(m) || 0;
+    const i = inflows.get(m) || 0;
+    totalDeficit += Math.max(0, o - i);
+  }
+
+  return Math.round(totalDeficit / targetMonths.length);
+}
+
+/**
+ * Alias for calculateMonthlyNetBurn for backwards compatibility with existing AI retriever.
  */
 export function calculateNetMonthlyBurn(transactions: Transaction[]): number {
-  if (!transactions || transactions.length === 0) return 85000;
-
-  const now = new Date();
-  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
-  const currentMonthTx = transactions.filter(
-    (tx) => tx.transaction_date.startsWith(currentMonthKey) && tx.status !== 'failed'
-  );
-
-  if (currentMonthTx.length === 0) {
-    return calculateMonthlyBurn(transactions, 1);
-  }
-
-  let income = 0;
-  let expense = 0;
-
-  for (const tx of currentMonthTx) {
-    if (tx.transaction_type === 'income') income += Number(tx.amount);
-    else expense += Number(tx.amount);
-  }
-
-  return Math.max(0, expense - income);
+  return calculateMonthlyNetBurn(transactions, 3);
 }
 
 /**
- * Calculates runway in months. Handles zero/negative burn safely.
+ * Calculates runway in months based on Cash on Hand and Average Monthly Net Burn.
+ * Safely handles zero/negative burn and zero cash without fake infinite numbers.
  */
 export function calculateRunway(
   cashOnHand: number,
@@ -115,189 +128,222 @@ export function calculateRunway(
   if (monthlyBurn <= 0) {
     return {
       runwayMonths: 999,
-      display: 'Profitable / Infinite',
+      display: 'Cash-Flow Positive',
       isCashFlowPositive: true,
     };
   }
 
   const runway = Math.round((cashOnHand / monthlyBurn) * 10) / 10;
-  const displayMonths = Math.round(runway);
+  const displayMonths = runway % 1 === 0 ? `${runway} Mos` : `${runway.toFixed(1)} Mos`;
 
   return {
     runwayMonths: runway,
-    display: `${displayMonths} Mos`,
+    display: displayMonths,
     isCashFlowPositive: false,
   };
 }
 
 /**
- * Calculates Month-over-Month Growth
+ * Calculates Month-over-Month Revenue Growth between the two most recently completed calendar months (M-1 vs M-2).
+ * Returns strict typed status; zero fake numbers (no 12.4% fallback).
  */
 export function calculateMoMGrowth(transactions: Transaction[]): {
-  momGrowthPercent: number;
+  momGrowthPercent: number | null;
+  status: 'active' | 'insufficient_data' | 'pre_revenue' | 'first_revenue_period';
   burnChangePercent: number;
   cashChangePercent: number;
+  cashChangeDisplay?: string;
+  burnChangeDisplay?: string;
 } {
-  if (!transactions || transactions.length === 0) {
+  const activeTxs = (transactions || []).filter((t) => t.status !== 'failed');
+  if (activeTxs.length === 0) {
     return {
-      momGrowthPercent: 12.4,
-      burnChangePercent: -2.1,
-      cashChangePercent: 5.2,
+      momGrowthPercent: null,
+      status: 'insufficient_data',
+      burnChangePercent: 0,
+      cashChangePercent: 0,
+      cashChangeDisplay: 'No data',
+      burnChangeDisplay: 'No data',
     };
   }
 
-  // Group revenues and expenses by month
-  const monthlyRevenue = new Map<string, number>();
-  const monthlyExpenses = new Map<string, number>();
-
-  for (const tx of transactions) {
-    if (tx.status === 'failed') continue;
-    const m = tx.transaction_date.substring(0, 7);
-    if (tx.transaction_type === 'income') {
-      monthlyRevenue.set(m, (monthlyRevenue.get(m) || 0) + Number(tx.amount));
-    } else {
-      monthlyExpenses.set(m, (monthlyExpenses.get(m) || 0) + Number(tx.amount));
-    }
-  }
-
-  const sortedMonths = Array.from(
-    new Set([...monthlyRevenue.keys(), ...monthlyExpenses.keys()])
-  ).sort().reverse();
-
-  if (sortedMonths.length < 2) {
+  const { completedMonths, k } = getReportingAnchorAndCompletedMonths(activeTxs);
+  if (k < 2) {
     return {
-      momGrowthPercent: 12.4,
-      burnChangePercent: -2.1,
-      cashChangePercent: 5.2,
+      momGrowthPercent: null,
+      status: 'insufficient_data',
+      burnChangePercent: 0,
+      cashChangePercent: 0,
+      cashChangeDisplay: 'Requires 2 months',
+      burnChangeDisplay: 'Requires 2 months',
     };
   }
 
-  const currentMonth = sortedMonths[0];
-  const priorMonth = sortedMonths[1];
+  const { inflows, outflows } = getMonthlyTotalsMap(activeTxs);
+  const m1 = completedMonths[0]; // M-1 (latest completed)
+  const m2 = completedMonths[1]; // M-2 (prior completed)
 
-  const currentRev = monthlyRevenue.get(currentMonth) || 0;
-  const priorRev = monthlyRevenue.get(priorMonth) || 1;
-  const momGrowthPercent =
-    priorRev > 0 ? Math.round(((currentRev - priorRev) / priorRev) * 1000) / 10 : 0;
+  const rev1 = inflows.get(m1) || 0;
+  const rev2 = inflows.get(m2) || 0;
+  const exp1 = outflows.get(m1) || 0;
+  const exp2 = outflows.get(m2) || 0;
 
-  const currentExp = monthlyExpenses.get(currentMonth) || 0;
-  const priorExp = monthlyExpenses.get(priorMonth) || 1;
-  const burnChangePercent =
-    priorExp > 0 ? Math.round(((currentExp - priorExp) / priorExp) * 1000) / 10 : 0;
+  // MoM Burn Change
+  let burnChangePercent = 0;
+  let burnChangeDisplay = '0.0%';
+  if (exp2 > 0) {
+    burnChangePercent = Math.round(((exp1 - exp2) / exp2) * 1000) / 10;
+    burnChangeDisplay = `${burnChangePercent >= 0 ? '+' : ''}${burnChangePercent.toFixed(1)}%`;
+  } else if (exp1 > 0) {
+    burnChangePercent = 100;
+    burnChangeDisplay = '+100%';
+  }
+
+  // MoM Revenue Growth
+  if (rev1 === 0 && rev2 === 0) {
+    return {
+      momGrowthPercent: null,
+      status: 'pre_revenue',
+      burnChangePercent,
+      cashChangePercent: 0,
+      cashChangeDisplay: 'N/A',
+      burnChangeDisplay,
+    };
+  }
+
+  if (rev2 === 0 && rev1 > 0) {
+    return {
+      momGrowthPercent: null,
+      status: 'first_revenue_period',
+      burnChangePercent,
+      cashChangePercent: 0,
+      cashChangeDisplay: 'First Revenue',
+      burnChangeDisplay,
+    };
+  }
+
+  if (rev2 > 0 && rev1 === 0) {
+    return {
+      momGrowthPercent: -100.0,
+      status: 'active',
+      burnChangePercent,
+      cashChangePercent: 0,
+      cashChangeDisplay: '-100%',
+      burnChangeDisplay,
+    };
+  }
+
+  const momGrowthPercent = Math.round(((rev1 - rev2) / rev2) * 1000) / 10;
 
   return {
-    momGrowthPercent: momGrowthPercent === 0 ? 12.4 : momGrowthPercent,
-    burnChangePercent: burnChangePercent === 0 ? -2.1 : burnChangePercent,
-    cashChangePercent: 5.2,
+    momGrowthPercent,
+    status: 'active',
+    burnChangePercent,
+    cashChangePercent: momGrowthPercent,
+    cashChangeDisplay: `${momGrowthPercent >= 0 ? '+' : ''}${momGrowthPercent.toFixed(1)}%`,
+    burnChangeDisplay,
   };
 }
 
 /**
  * Calculates complete KPI object from workspace transactions
  */
-export function calculateAllKPIs(transactions: Transaction[], startingBalance?: number): FinancialKPIs {
-  const cashOnHand = calculateCashOnHand(transactions, startingBalance);
-  const monthlyBurn = calculateMonthlyBurn(transactions);
-  const { runwayMonths, display, isCashFlowPositive } = calculateRunway(
-    cashOnHand,
-    monthlyBurn
-  );
-  const { momGrowthPercent, burnChangePercent, cashChangePercent } =
-    calculateMoMGrowth(transactions);
+export function calculateAllKPIs(
+  transactions: Transaction[],
+  startingBalance?: number
+): FinancialKPIs {
+  const activeTxs = (transactions || []).filter((t) => t.status !== 'failed');
+  const cashOnHand = calculateCashOnHand(activeTxs, startingBalance);
+  const monthlyNetBurn = calculateMonthlyNetBurn(activeTxs);
+  const { runwayMonths, display, isCashFlowPositive } = calculateRunway(cashOnHand, monthlyNetBurn);
+  const momResult = calculateMoMGrowth(activeTxs);
+  const { reportingAnchorMonth, k } = getReportingAnchorAndCompletedMonths(activeTxs);
+
+  const hasData = activeTxs.length > 0;
 
   return {
     cashOnHand,
-    cashChangePercent,
-    monthlyBurn,
-    burnChangePercent,
+    cashChangePercent: momResult.cashChangePercent,
+    cashChangeDisplay: momResult.cashChangeDisplay,
+    monthlyBurn: monthlyNetBurn,
+    burnChangePercent: momResult.burnChangePercent,
+    burnChangeDisplay: momResult.burnChangeDisplay,
     runwayMonths,
     runwayDisplay: display,
-    momGrowthPercent,
+    momGrowthPercent: momResult.momGrowthPercent,
+    momGrowthStatus: momResult.status,
     growthTargetPercent: 1.5,
     isCashFlowPositive,
-    hasSufficientData: transactions.length > 0,
+    hasSufficientData: hasData,
+    completedMonthsCount: k,
+    reportingAnchorMonth,
   };
 }
 
 /**
- * Generates Cash Flow Projection points (Actuals + Forecast)
+ * Generates verified historical cumulative cash flow trajectory and deterministic forecast.
  */
 export function generateCashFlowProjection(
-  cashOnHand: number,
-  monthlyBurn: number
+  transactionsOrCashOnHand: Transaction[] | number,
+  startingBalanceOrBurn?: number,
+  forecastMonthsCount?: number,
+  currency?: string
 ): CashFlowProjection {
+  // If called with transactions array:
+  if (Array.isArray(transactionsOrCashOnHand)) {
+    return generateProjectionEngine(transactionsOrCashOnHand, startingBalanceOrBurn, forecastMonthsCount, currency);
+  }
+
+  // Backwards compatibility fallback if invoked with (cashOnHand, monthlyBurn):
+  const cashOnHand = transactionsOrCashOnHand;
+  const monthlyBurn = startingBalanceOrBurn || 0;
+  const isCashFlowPositive = monthlyBurn <= 0;
+  const { runwayMonths } = calculateRunway(cashOnHand, monthlyBurn);
+
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const now = new Date();
   const currentMonthIdx = now.getMonth();
 
-  // 3 historical months + current + 2 forecast months
-  const points: ProjectionMonth[] = [];
-
-  // Historical simulation grounded in current cash
-  const m1 = (currentMonthIdx - 3 + 12) % 12;
-  const m2 = (currentMonthIdx - 2 + 12) % 12;
-  const m3 = (currentMonthIdx - 1 + 12) % 12;
-  const mNow = currentMonthIdx;
-  const m4 = (currentMonthIdx + 1) % 12;
-  const m5 = (currentMonthIdx + 2) % 12;
-
-  const b = monthlyBurn || 85000;
-
-  points.push({
-    month: monthNames[m1],
-    actual: Math.round(cashOnHand + b * 2.8),
-  });
-  points.push({
-    month: monthNames[m2],
-    actual: Math.round(cashOnHand + b * 1.9),
-  });
-  points.push({
-    month: monthNames[m3],
-    actual: Math.round(cashOnHand + b * 0.95),
-  });
-  points.push({
-    month: `${monthNames[mNow]} (Now)`,
-    actual: Math.round(cashOnHand),
-    forecast: Math.round(cashOnHand),
-    isCurrent: true,
-  });
-  points.push({
-    month: monthNames[m4],
-    forecast: Math.max(0, Math.round(cashOnHand - b * 0.9)),
-  });
-  points.push({
-    month: monthNames[m5],
-    forecast: Math.max(0, Math.round(cashOnHand - b * 1.8)),
-  });
-
-  const { runwayMonths } = calculateRunway(cashOnHand, monthlyBurn);
+  const points = [
+    { month: `${monthNames[currentMonthIdx]} (Current)`, actual: Math.round(cashOnHand), isCurrent: true, isForecast: false },
+    {
+      month: monthNames[(currentMonthIdx + 1) % 12],
+      forecast: isCashFlowPositive ? Math.round(cashOnHand) : Math.max(0, Math.round(cashOnHand - monthlyBurn)),
+      isCurrent: false,
+      isForecast: true,
+    },
+    {
+      month: monthNames[(currentMonthIdx + 2) % 12],
+      forecast: isCashFlowPositive ? Math.round(cashOnHand) : Math.max(0, Math.round(cashOnHand - monthlyBurn * 2)),
+      isCurrent: false,
+      isForecast: true,
+    },
+  ];
 
   return {
     points,
     currentCash: cashOnHand,
     projectedRunway: runwayMonths,
     monthlyNetBurn: monthlyBurn,
+    status: 'active',
+    forecastMethodology: 'Deterministic linear trajectory',
+    hasSufficientData: true,
   };
 }
 
 /**
- * Calculates category-level expense distribution
+ * Calculates category-level expense distribution across active transactions.
+ * Returns empty array if no expenses exist (never displays fake dummy categories).
  */
 export function calculateCategoryBreakdown(
   transactions: Transaction[]
 ): ExpenseBreakdownItem[] {
-  const expenseTx = transactions.filter(
+  const expenseTx = (transactions || []).filter(
     (tx) => tx.transaction_type === 'expense' && tx.status !== 'failed'
   );
 
   if (expenseTx.length === 0) {
-    // Default Stratos category fallback values
-    return [
-      { category: 'Payroll', amount: 55000, percentage: 65, colorClass: 'bg-primary', transactionCount: 12 },
-      { category: 'Marketing', amount: 17000, percentage: 20, colorClass: 'bg-primary-container', transactionCount: 8 },
-      { category: 'Software / IT', amount: 8500, percentage: 10, colorClass: 'bg-surface-tint', transactionCount: 15 },
-      { category: 'Office / Admin', amount: 4500, percentage: 5, colorClass: 'bg-outline', transactionCount: 4 },
-    ];
+    return [];
   }
 
   const categoryMap = new Map<string, { amount: number; count: number }>();
@@ -349,22 +395,28 @@ export function calculateWhatIfScenario(
   currentMonthlyBurn: number,
   deltaMonthlyBurn: number,
   deltaMonthlyRevenue: number = 0,
-  _scenarioName: string = 'Custom What-If'
+  _scenarioName: string = 'Custom What-If',
+  currency: string = 'USD'
 ): ScenarioCalculationResult {
-  const effectiveCurrentBurn = Math.max(1, currentMonthlyBurn);
-  const currentRunway = Math.round((currentCash / effectiveCurrentBurn) * 10) / 10;
+  const effectiveCurrentBurn = Math.max(0, currentMonthlyBurn);
+  const currentRunway = effectiveCurrentBurn > 0
+    ? Math.round((currentCash / effectiveCurrentBurn) * 10) / 10
+    : 999;
 
   const netMonthlyCostImpact = deltaMonthlyBurn - deltaMonthlyRevenue;
-  const newMonthlyBurn = Math.max(1, effectiveCurrentBurn + netMonthlyCostImpact);
-  const projectedRunway = Math.round((currentCash / newMonthlyBurn) * 10) / 10;
+  const newMonthlyBurn = Math.max(0, effectiveCurrentBurn + netMonthlyCostImpact);
+  const projectedRunway = newMonthlyBurn > 0
+    ? Math.round((currentCash / newMonthlyBurn) * 10) / 10
+    : 999;
   const differenceMonths = Math.round((projectedRunway - currentRunway) * 10) / 10;
 
+  const sym = getCurrencySymbol(currency);
   const assumptions: string[] = [
     `Scenario Model: ${_scenarioName || 'Custom What-If'}.`,
-    `Current cash position of $${(currentCash / 1000000).toFixed(2)}M remains constant.`,
-    `Current monthly baseline burn is $${(currentMonthlyBurn / 1000).toFixed(0)}K.`,
-    `New monthly incremental cost is $${(netMonthlyCostImpact / 1000).toFixed(0)}K.`,
-    `Projected monthly burn becomes $${(newMonthlyBurn / 1000).toFixed(0)}K.`,
+    `Current cash position of ${sym}${(currentCash / 1000000).toFixed(2)}M remains constant.`,
+    `Current monthly baseline burn is ${sym}${(currentMonthlyBurn / 1000).toFixed(0)}K.`,
+    `New monthly incremental cost is ${sym}${(netMonthlyCostImpact / 1000).toFixed(0)}K.`,
+    `Projected monthly burn becomes ${sym}${(newMonthlyBurn / 1000).toFixed(0)}K.`,
   ];
 
   return {

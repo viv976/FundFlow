@@ -270,7 +270,7 @@ ${rag.hasSufficientEvidence ? `* *Organizational Context:* "${rag.matches[0].con
     const currentCash = 1200000;
     const monthlyBurn = Math.max(1, Math.round((totalExpenses - totalIncome) / 6) || 45000);
 
-    const sim = calculateWhatIfScenario(currentCash, monthlyBurn, totalMonthlyNewBurn, 0, `Hiring ${headcount} person(s)`);
+    const sim = calculateWhatIfScenario(currentCash, monthlyBurn, totalMonthlyNewBurn, 0, `Hiring ${headcount} person(s)`, currency);
 
     const citations: AICitation[] = [
       {

@@ -126,9 +126,17 @@ export function validateTransactionInput(raw: unknown): ValidationResult<Validat
   // Status
   const rawStatus = obj.status;
   const validStatuses: TransactionStatus[] = ['completed', 'pending', 'failed', 'reconciled'];
-  const status: TransactionStatus = validStatuses.includes(rawStatus as TransactionStatus)
-    ? (rawStatus as TransactionStatus)
-    : 'completed';
+  let status: TransactionStatus = 'completed';
+  if (rawStatus !== undefined && rawStatus !== null) {
+    if (validStatuses.includes(rawStatus as TransactionStatus)) {
+      status = rawStatus as TransactionStatus;
+    } else {
+      errors.push({
+        field: 'status',
+        message: `Status must be one of: ${validStatuses.join(', ')}`,
+      });
+    }
+  }
 
   // Source
   const rawSource = obj.source;

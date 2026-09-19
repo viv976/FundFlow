@@ -181,6 +181,9 @@ export async function POST(req: NextRequest) {
         description: desc.slice(0, 500),
         account_name: typeof item.external_reference === 'string' ? item.external_reference.slice(0, 200) : 'Operating Account',
         currency: typeof item.currency === 'string' && item.currency.trim() ? item.currency.trim().toUpperCase() : 'USD',
+        status: (typeof item.status === 'string' && ['completed', 'pending', 'failed', 'reconciled'].includes(item.status))
+          ? (item.status as 'completed' | 'pending' | 'failed' | 'reconciled')
+          : 'completed',
         source: 'csv_import',
         source_file_id: null,
         is_recurring: false,
