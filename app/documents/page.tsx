@@ -6,6 +6,7 @@ import { fetchKnowledgeDocsFromDb, fetchDocumentChunksFromDb } from '@/lib/supab
 import { DatabaseKnowledgeDocument, DatabaseDocumentChunk } from '@/lib/supabase/types';
 import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
+import { chunkText } from '@/lib/ai/chunker';
 
 export default function DocumentsPage() {
   const { workspace } = useFinance();
@@ -77,17 +78,22 @@ export default function DocumentsPage() {
         throw docErr;
       }
 
-      // 2. Insert chunk
-      await supabase.from('document_chunks').insert({
+      // 2. Generate semantic chunks
+      const generatedChunks = chunkText(content.trim(), {
+        title: title.trim(),
+        source: source.trim() || 'Manual Input',
+        documentType: docType,
+      });
+
+      const chunkRows = generatedChunks.map((c) => ({
         document_id: docData.id,
         workspace_id: workspace.id,
-        chunk_index: 0,
-        content: content.trim(),
-        metadata: {
-          title: title.trim(),
-          source: source.trim(),
-        },
-      });
+        chunk_index: c.chunkIndex,
+        content: c.content,
+        metadata: c.metadata,
+      }));
+
+      await supabase.from('document_chunks').insert(chunkRows);
 
       // Reset
       setTitle('');

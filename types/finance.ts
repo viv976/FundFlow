@@ -224,6 +224,10 @@ export interface AIMessage {
   };
   citations?: AICitation[];
   insights?: string[];
+  keyPoints?: string[];
+  evidence?: string[];
+  limitations?: string;
+  answer?: string;
   chartAction?: {
     type: 'cash_flow' | 'category_spend' | 'burn_trend';
     label: string;

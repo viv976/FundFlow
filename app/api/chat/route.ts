@@ -29,36 +29,86 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServerSupabaseClient();
 
-    // 1. Resolve Workspace
-    let activeWs: Workspace = {
-      id: workspaceId || 'default-workspace',
-      name: 'Corporate Workspace',
-      owner_id: 'default-owner',
-      currency: 'USD',
-      created_at: new Date().toISOString(),
-    };
-
-    if (workspaceId && isValidUUID(workspaceId)) {
-      const { data: wsData } = await supabase
-        .from('workspaces')
-        .select('*')
-        .eq('id', workspaceId)
-        .limit(1)
-        .single();
-
-      if (wsData) {
-        const dbWs = wsData as DatabaseWorkspace;
-        activeWs = {
-          id: dbWs.id,
-          name: dbWs.name,
-          owner_id: dbWs.owner_id,
-          currency: dbWs.currency || 'USD',
-          created_at: dbWs.created_at,
-        };
-      }
+    // 1. Authentication Check: Extract Bearer token & resolve user
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) {
+      return NextResponse.json(
+        { error: 'Authentication required. Missing or malformed Authorization header.', requestId },
+        { status: 401 }
+      );
     }
 
-    // 2. Fetch Workspace Knowledge Documents & Chunks for RAG
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    if (!token) {
+      return NextResponse.json(
+        { error: 'Authentication required. Missing bearer token.', requestId },
+        { status: 401 }
+      );
+    }
+
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData?.user?.id) {
+      return NextResponse.json(
+        { error: 'Invalid or expired authentication session.', requestId },
+        { status: 401 }
+      );
+    }
+    const authenticatedUserId = userData.user.id;
+
+    // 2. Validate workspaceId
+    if (!workspaceId || !isValidUUID(workspaceId)) {
+      return NextResponse.json(
+        { error: 'A valid Workspace UUID is required.', requestId },
+        { status: 400 }
+      );
+    }
+
+    // 3. Multi-tenant Authorization Check
+    const { data: wsData, error: wsError } = await supabase
+      .from('workspaces')
+      .select('*')
+      .eq('id', workspaceId)
+      .limit(1)
+      .single();
+
+    if (wsError || !wsData) {
+      return NextResponse.json(
+        { error: 'Workspace not found.', requestId },
+        { status: 404 }
+      );
+    }
+
+    const isOwner = wsData.owner_id === authenticatedUserId;
+
+    let isMember = false;
+    if (!isOwner) {
+      const { data: membership } = await supabase
+        .from('workspace_members')
+        .select('role')
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', authenticatedUserId)
+        .limit(1);
+
+      isMember = Boolean(membership && membership.length > 0);
+    }
+
+    if (!isOwner && !isMember) {
+      return NextResponse.json(
+        { error: 'Forbidden: You do not have access to this workspace.', requestId },
+        { status: 403 }
+      );
+    }
+
+    const dbWs = wsData as DatabaseWorkspace;
+    const activeWs: Workspace = {
+      id: dbWs.id,
+      name: dbWs.name,
+      owner_id: dbWs.owner_id,
+      currency: dbWs.currency || 'USD',
+      created_at: dbWs.created_at,
+    };
+
+    // 4. Fetch Workspace Knowledge Documents & Chunks for RAG (Authorized Tenant)
     let knowledgeDocs: DatabaseKnowledgeDocument[] = [];
     let documentChunks: DatabaseDocumentChunk[] = [];
     let monthlySummaries: DatabaseMonthlyFinancialSummary[] = [];
@@ -77,7 +127,7 @@ export async function POST(req: NextRequest) {
       console.warn('RAG workspace data load notice:', fetchErr);
     }
 
-    // 3. Resolve or Create Conversation
+    // 5. Resolve or Create Conversation
     let activeConvId = conversationId;
     try {
       if (!activeConvId) {
@@ -85,7 +135,7 @@ export async function POST(req: NextRequest) {
           .from('ai_conversations')
           .insert({
             workspace_id: activeWs.id,
-            user_id: activeWs.owner_id,
+            user_id: authenticatedUserId,
             title: cleanMessage.substring(0, 50),
           })
           .select('id')

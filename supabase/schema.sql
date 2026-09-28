@@ -180,6 +180,31 @@ CREATE TABLE IF NOT EXISTS scenarios (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- 13. Knowledge Documents
+CREATE TABLE IF NOT EXISTS knowledge_documents (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    document_type VARCHAR(50) NOT NULL DEFAULT 'financial_context',
+    source TEXT NOT NULL DEFAULT 'Manual Input',
+    content TEXT NOT NULL,
+    metadata JSONB DEFAULT '{}'::JSONB,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 14. Document Chunks for Retrieval-Augmented Generation (RAG)
+CREATE TABLE IF NOT EXISTS document_chunks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    document_id UUID NOT NULL REFERENCES knowledge_documents(id) ON DELETE CASCADE,
+    workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    chunk_index INTEGER NOT NULL DEFAULT 0,
+    content TEXT NOT NULL,
+    metadata JSONB DEFAULT '{}'::JSONB,
+    embedding JSONB DEFAULT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ========================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
 -- ========================================================
@@ -197,6 +222,8 @@ ALTER TABLE ai_conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_citations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scenarios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE knowledge_documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE document_chunks ENABLE ROW LEVEL SECURITY;
 
 -- Helper function to check workspace access
 CREATE OR REPLACE FUNCTION user_has_workspace_access(ws_id UUID)
@@ -291,5 +318,32 @@ CREATE POLICY "Members can insert AI messages" ON ai_messages
             SELECT 1 FROM ai_conversations
             WHERE ai_conversations.id = ai_messages.conversation_id
               AND user_has_workspace_access(ai_conversations.workspace_id)
+        )
+    );
+
+-- Knowledge Documents & Chunks RLS (Tenant Isolation)
+CREATE POLICY "Members can view knowledge documents" ON knowledge_documents
+    FOR SELECT USING (user_has_workspace_access(workspace_id));
+
+CREATE POLICY "Authorized members can manage knowledge documents" ON knowledge_documents
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM workspace_members
+            WHERE workspace_id = knowledge_documents.workspace_id
+              AND user_id = auth.uid()
+              AND role IN ('owner', 'admin', 'member')
+        )
+    );
+
+CREATE POLICY "Members can view document chunks" ON document_chunks
+    FOR SELECT USING (user_has_workspace_access(workspace_id));
+
+CREATE POLICY "Authorized members can manage document chunks" ON document_chunks
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM workspace_members
+            WHERE workspace_id = document_chunks.workspace_id
+              AND user_id = auth.uid()
+              AND role IN ('owner', 'admin', 'member')
         )
     );

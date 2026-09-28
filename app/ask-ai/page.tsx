@@ -7,12 +7,15 @@ import { formatCurrency, calculateWhatIfScenario, getCurrencySymbol } from '@/li
 import Link from 'next/link';
 
 const QUICK_PROMPTS = [
-  'How much did I spend last month?',
-  'What was my revenue?',
-  'What category had the highest expenses?',
-  'What is EBITDA?',
-  'Why did my expenses increase?',
-  'What should I do to reduce expenses?',
+  'Why did burn increase this month?',
+  'What are our largest expenses?',
+  'What caused the biggest cash outflows?',
+  'Which expenses grew fastest?',
+  'How long is our runway?',
+  'What changed compared with last month?',
+  'What does our financial plan say about hiring?',
+  'Show unusual spending.',
+  'How is runway calculated?',
   'What if I hire 2 engineers at $80k?',
 ];
 
@@ -197,6 +200,20 @@ export default function AskAIPage() {
                     <div className="font-body-sm leading-relaxed whitespace-pre-line">
                       {msg.content}
                     </div>
+
+                    {/* Key Takeaways */}
+                    {msg.keyPoints && msg.keyPoints.length > 0 && !isUser && (
+                      <div className="pt-2 border-t border-outline-variant/40 space-y-1">
+                        <span className="text-[10px] font-label-md uppercase tracking-wider text-on-surface-variant block font-semibold">
+                          Key Takeaways:
+                        </span>
+                        <ul className="list-disc list-inside space-y-0.5 text-xs text-on-surface/90">
+                          {msg.keyPoints.map((kp, idx) => (
+                            <li key={idx} className="font-body-sm">{kp}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
                     {/* Scenario Impact Card (if scenario returned) */}
                     {msg.scenario && (

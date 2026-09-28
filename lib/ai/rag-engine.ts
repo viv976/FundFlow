@@ -1,4 +1,5 @@
 import { DatabaseKnowledgeDocument, DatabaseDocumentChunk } from '@/lib/supabase/types';
+import { sanitizeUntrustedDocument } from './sanitizer';
 
 export interface RetrievedChunkResult {
   chunkId: string;
@@ -6,6 +7,8 @@ export interface RetrievedChunkResult {
   documentTitle: string;
   content: string;
   score: number;
+  chunkIndex?: number;
+  source?: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -21,7 +24,7 @@ export interface RAGRetrievalOutput {
  * Standard financial and accounting glossary knowledge chunks
  * Built-in general accounting knowledge base for FundFlow
  */
-const GLOBAL_FINANCIAL_KNOWLEDGE = [
+export const GLOBAL_FINANCIAL_KNOWLEDGE = [
   {
     title: 'EBITDA Definition and Calculation',
     content:
@@ -48,74 +51,121 @@ const GLOBAL_FINANCIAL_KNOWLEDGE = [
   },
 ];
 
+const STOP_WORDS = new Set([
+  'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'has', 'he',
+  'in', 'is', 'it', 'its', 'of', 'on', 'that', 'the', 'to', 'was', 'were',
+  'will', 'with', 'our', 'what', 'does', 'how', 'say', 'about',
+]);
+
+function stemWord(word: string): string {
+  if (word.length <= 3) return word;
+  if (word.endsWith('ing') && word.length > 5) return word.slice(0, -3);
+  if (word.endsWith('es') && word.length > 4) return word.slice(0, -2);
+  if (word.endsWith('s') && !word.endsWith('ss') && word.length > 3) return word.slice(0, -1);
+  if (word.endsWith('ed') && word.length > 4) return word.slice(0, -2);
+  return word;
+}
+
 /**
- * Tokenize and vectorize text for cosine similarity calculation
+ * Tokenize and normalize text into meaningful terms with stemming
  */
-function tokenize(text: string): string[] {
+export function tokenizeText(text: string): string[] {
   return text
     .toLowerCase()
-    .replace(/[^\w\s]/g, ' ')
+    .replace(/[^\w\s-]/g, ' ')
     .split(/\s+/)
-    .filter((w) => w.length > 2);
-}
-
-function calculateCosineSimilarity(query: string, documentText: string): number {
-  const queryTokens = tokenize(query);
-  const docTokens = tokenize(documentText);
-
-  if (queryTokens.length === 0 || docTokens.length === 0) return 0;
-
-  const allWords = Array.from(new Set([...queryTokens, ...docTokens]));
-  const queryFreq: Record<string, number> = {};
-  const docFreq: Record<string, number> = {};
-
-  for (const w of queryTokens) queryFreq[w] = (queryFreq[w] || 0) + 1;
-  for (const w of docTokens) docFreq[w] = (docFreq[w] || 0) + 1;
-
-  let dotProduct = 0;
-  let queryMag = 0;
-  let docMag = 0;
-
-  for (const w of allWords) {
-    const qVal = queryFreq[w] || 0;
-    const dVal = docFreq[w] || 0;
-    dotProduct += qVal * dVal;
-    queryMag += qVal * qVal;
-    docMag += dVal * dVal;
-  }
-
-  if (queryMag === 0 || docMag === 0) return 0;
-
-  return dotProduct / (Math.sqrt(queryMag) * Math.sqrt(docMag));
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w))
+    .map(stemWord);
 }
 
 /**
- * Retrieve semantic chunks for user query scoped by workspace
+ * Production-sensible BM25-inspired term frequency and inverse document frequency scorer
+ */
+function scoreDocumentBM25(
+  queryTokens: string[],
+  docTokens: string[],
+  avgDocLen: number,
+  titleTokens: string[] = [],
+  rawQuery: string = '',
+  rawDoc: string = ''
+): number {
+  if (queryTokens.length === 0 || docTokens.length === 0) return 0;
+
+  const k1 = 1.2;
+  const b = 0.75;
+  const docLen = docTokens.length;
+
+  const docFreq: Record<string, number> = {};
+  for (const t of docTokens) {
+    docFreq[t] = (docFreq[t] || 0) + 1;
+  }
+
+  const titleSet = new Set(titleTokens);
+  let totalScore = 0;
+
+  for (const term of queryTokens) {
+    const tf = docFreq[term] || 0;
+    if (tf === 0) continue;
+
+    // BM25 Term Frequency saturation with length normalization
+    const tfNorm = (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (docLen / Math.max(1, avgDocLen))));
+
+    // Title match boost
+    const titleMultiplier = titleSet.has(term) ? 2.5 : 1.0;
+
+    totalScore += tfNorm * titleMultiplier;
+  }
+
+  // Exact phrase match bonus
+  if (rawQuery.length > 5 && rawDoc.toLowerCase().includes(rawQuery.toLowerCase())) {
+    totalScore += 3.0;
+  }
+
+  // Normalized similarity score between 0.0 and 1.0
+  const maxPossible = queryTokens.length * (k1 + 1) * 2.5 + 3.0;
+  return Math.min(1.0, Math.round((totalScore / maxPossible) * 100) / 100);
+}
+
+/**
+ * Retrieve semantic knowledge chunks strictly scoped by workspace ID (Tenant Isolation)
  */
 export function retrieveWorkspaceRAGChunks(
   query: string,
   workspaceId: string,
-  workspaceDocs: DatabaseKnowledgeDocument[],
-  workspaceChunks: DatabaseDocumentChunk[],
+  workspaceDocs: DatabaseKnowledgeDocument[] = [],
+  workspaceChunks: DatabaseDocumentChunk[] = [],
   similarityThreshold: number = 0.20
 ): RAGRetrievalOutput {
+  const queryTokens = tokenizeText(query);
   const scoredChunks: RetrievedChunkResult[] = [];
 
-  // 1. Score workspace document chunks
-  for (const chunk of workspaceChunks) {
-    if (chunk.workspace_id !== workspaceId) continue;
+  // Strictly filter to current tenant workspace
+  const tenantDocs = workspaceDocs.filter((d) => d.workspace_id === workspaceId);
+  const tenantChunks = workspaceChunks.filter((c) => c.workspace_id === workspaceId);
 
-    const parentDoc = workspaceDocs.find((d) => d.id === chunk.document_id);
-    const docTitle = parentDoc?.title || 'Workspace Knowledge Document';
+  // Compute average length across tenant chunks
+  const avgChunkLen = tenantChunks.length > 0
+    ? tenantChunks.reduce((acc, c) => acc + tokenizeText(c.content).length, 0) / tenantChunks.length
+    : 30;
 
-    const score = calculateCosineSimilarity(query, `${docTitle} ${chunk.content}`);
+  // 1. Score workspace document chunks (Fine-grained retrieval)
+  for (const chunk of tenantChunks) {
+    const parentDoc = tenantDocs.find((d) => d.id === chunk.document_id);
+    const docTitle = parentDoc?.title || (chunk.metadata?.title as string) || 'Workspace Knowledge Document';
+    const titleTokens = tokenizeText(docTitle);
+    const chunkTokens = tokenizeText(`${docTitle} ${chunk.content}`);
+
+    const score = scoreDocumentBM25(queryTokens, chunkTokens, avgChunkLen, titleTokens, query, `${docTitle} ${chunk.content}`);
+
     if (score >= similarityThreshold) {
       scoredChunks.push({
         chunkId: chunk.id,
         documentId: chunk.document_id,
         documentTitle: docTitle,
-        content: chunk.content,
-        score: Math.round(score * 100) / 100,
+        content: sanitizeUntrustedDocument(chunk.content),
+        score,
+        chunkIndex: chunk.chunk_index,
+        source: parentDoc?.source || (chunk.metadata?.source as string) || 'Knowledge Base',
         metadata: (chunk.metadata as Record<string, unknown>) || undefined,
       });
     }
@@ -123,37 +173,52 @@ export function retrieveWorkspaceRAGChunks(
 
   // 2. Score whole workspace documents if chunks didn't yield matches
   if (scoredChunks.length === 0) {
-    for (const doc of workspaceDocs) {
-      if (doc.workspace_id !== workspaceId) continue;
-      const score = calculateCosineSimilarity(query, `${doc.title} ${doc.content}`);
+    const avgDocLen = tenantDocs.length > 0
+      ? tenantDocs.reduce((acc, d) => acc + tokenizeText(d.content).length, 0) / tenantDocs.length
+      : 50;
+
+    for (const doc of tenantDocs) {
+      const docTitle = doc.title || 'Workspace Knowledge Document';
+      const titleTokens = tokenizeText(docTitle);
+      const docTokens = tokenizeText(doc.content);
+
+      const score = scoreDocumentBM25(queryTokens, docTokens, avgDocLen, titleTokens, query, doc.content);
+
       if (score >= similarityThreshold) {
         scoredChunks.push({
           chunkId: `doc-${doc.id}`,
           documentId: doc.id,
-          documentTitle: doc.title,
-          content: doc.content,
-          score: Math.round(score * 100) / 100,
+          documentTitle: docTitle,
+          content: sanitizeUntrustedDocument(doc.content),
+          score,
+          chunkIndex: 0,
+          source: doc.source || 'Knowledge Base',
           metadata: (doc.metadata as Record<string, unknown>) || undefined,
         });
       }
     }
   }
 
-  // 3. Fallback: Search global accounting knowledge base for accounting definitions
+  // 3. Fallback: Search global accounting glossary for standard domain definitions
   for (const item of GLOBAL_FINANCIAL_KNOWLEDGE) {
-    const score = calculateCosineSimilarity(query, `${item.title} ${item.content} ${item.keywords.join(' ')}`);
+    const titleTokens = tokenizeText(item.title);
+    const itemTokens = tokenizeText(`${item.content} ${item.keywords.join(' ')}`);
+
+    const score = scoreDocumentBM25(queryTokens, itemTokens, 35, titleTokens, query, item.content);
+
     if (score >= similarityThreshold) {
       scoredChunks.push({
-        chunkId: `global-${item.title.toLowerCase().replace(/\s+/g, '-')}`,
-        documentId: 'global-accounting-docs',
+        chunkId: `global-${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+        documentId: 'global-accounting-reference',
         documentTitle: item.title,
         content: item.content,
-        score: Math.round(score * 100) / 100,
+        score,
+        source: 'Corporate Accounting Standard Reference',
       });
     }
   }
 
-  // Sort by highest similarity score
+  // Sort by highest score descending
   scoredChunks.sort((a, b) => b.score - a.score);
   const topMatches = scoredChunks.slice(0, 3);
   const topScore = topMatches.length > 0 ? topMatches[0].score : 0;
