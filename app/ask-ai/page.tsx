@@ -2,9 +2,10 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useFinance } from '@/lib/store/finance-context';
-import { AIMessage } from '@/types/finance';
+import { AIMessage, Transaction } from '@/types/finance';
 import { formatCurrency, calculateWhatIfScenario, getCurrencySymbol } from '@/lib/finance/calculator';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase/client';
 
 const QUICK_PROMPTS = [
   'Why did burn increase this month?',
@@ -21,6 +22,60 @@ const QUICK_PROMPTS = [
 
 function createMessageId(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
+ * Dispatches authenticated request to /api/chat with Bearer token.
+ * Gracefully handles unauthenticated state without dispatching unauthorized requests.
+ */
+export async function executeChatApiRequest(
+  text: string,
+  workspaceId: string,
+  transactions: Transaction[]
+): Promise<{ ok: true; data: AIMessage } | { ok: false; error: string }> {
+  // 1. Obtain authenticated Supabase access token using existing client auth mechanism
+  let token: string | undefined;
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    token = sessionData?.session?.access_token;
+  } catch (authErr) {
+    console.warn('Failed to retrieve Supabase auth session:', authErr);
+  }
+
+  // 2. Handle missing session gracefully rather than sending unauthenticated request
+  if (!token) {
+    return {
+      ok: false,
+      error: 'Authentication required. Please sign in to your FundFlow account to query the Financial Co-Pilot.',
+    };
+  }
+
+  // 3. Dispatch POST /api/chat with Authorization Bearer header
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      message: text,
+      workspaceId,
+      transactions,
+    }),
+  });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      return { ok: false, error: 'Your session has expired or is invalid. Please sign in again.' };
+    }
+    if (res.status === 403) {
+      return { ok: false, error: 'You do not have permission to access this workspace.' };
+    }
+    return { ok: false, error: `Server returned status ${res.status}` };
+  }
+
+  const data: AIMessage = await res.json();
+  return { ok: true, data };
 }
 
 export default function AskAIPage() {
@@ -96,22 +151,20 @@ export default function AskAIPage() {
       setIsLoading(true);
 
       try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            message: text,
-            workspaceId: workspace.id,
-            transactions,
-          }),
-        });
+        const result = await executeChatApiRequest(text, workspace.id, transactions);
 
-        if (!res.ok) {
-          throw new Error(`Server returned status ${res.status}`);
+        if (!result.ok) {
+          const errorMsg: AIMessage = {
+            id: createMessageId('auth-err'),
+            role: 'assistant',
+            content: result.error,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          };
+          setMessages((prev) => [...prev, errorMsg]);
+          return;
         }
 
-        const data: AIMessage = await res.json();
-        setMessages((prev) => [...prev, data]);
+        setMessages((prev) => [...prev, result.data]);
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Unknown chat error';
         console.error('Chat error:', err);
