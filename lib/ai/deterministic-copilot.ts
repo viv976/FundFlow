@@ -313,7 +313,44 @@ export function generateDeterministicCopilotResponse(
   }
 
   // =========================================================================
-  // 6. HOW LONG IS OUR RUNWAY? (Requirement 8)
+  // 6. HOW MUCH CASH DO WE HAVE? (CASH ON HAND)
+  // =========================================================================
+  if (intent.subType === 'CASH_QUERY') {
+    const cash = financialContext.cash;
+
+    const sources: AICitation[] = [
+      {
+        id: 'cite-cash',
+        type: 'financial_snapshot',
+        label: `Cash on Hand: ${cash.formatted}`,
+        amount: cash.current,
+        details: `Starting Cash: ${formatCurrency(cash.startingBalance, currency)} | Net Inception Flow: ${cash.netInceptionFlow >= 0 ? '+' : ''}${formatCurrency(cash.netInceptionFlow, currency)}`,
+      },
+    ];
+
+    const answer = `### Current Cash on Hand for ${wsName}\n\n* **Current Cash Balance:** **\`${cash.formatted}\`**\n\nThis balance is calculated directly from verified corporate ledger records and reconciled against your starting capital baseline:\n* **Starting Capital Baseline:** \`${formatCurrency(cash.startingBalance, currency)}\`\n* **Net Cash Flow:** \`${cash.netInceptionFlow >= 0 ? '+' : ''}${formatCurrency(cash.netInceptionFlow, currency)}\` across ${financialContext.transactions.activeCount} verified transactions\n\n> [!NOTE]\n> Calculated deterministically using FundFlow's verified ledger reconciliation: \`Cash on Hand = Starting Balance + Cumulative Inflows - Cumulative Outflows\`.`;
+
+    return {
+      answer,
+      keyPoints: [
+        `Current Cash Balance: ${cash.formatted}`,
+        `Starting Capital Baseline: ${formatCurrency(cash.startingBalance, currency)}`,
+        `Net Cash Flow: ${cash.netInceptionFlow >= 0 ? '+' : ''}${formatCurrency(cash.netInceptionFlow, currency)}`,
+      ],
+      evidence: [
+        `Starting capital: ${formatCurrency(cash.startingBalance, currency)}`,
+        `Net cash movement: ${formatCurrency(cash.netInceptionFlow, currency)}`,
+        `Reconciled cash on hand: ${cash.formatted}`,
+      ],
+      sources,
+      grounded: true,
+      groundingConfidence: 1.0,
+      detectedIntent: 'FINANCIAL_DATA:CASH_QUERY',
+    };
+  }
+
+  // =========================================================================
+  // 7. HOW LONG IS OUR RUNWAY? (Requirement 8)
   // =========================================================================
   if (intent.subType === 'RUNWAY_QUERY') {
     const runway = financialContext.runway;

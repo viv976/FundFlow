@@ -237,6 +237,26 @@ export function classifyFinancialIntent(userQuery: string): ClassifiedIntent {
   }
 
   // 4. FINANCIAL DATA QUESTIONS (Standard spend / revenue queries)
+  // Cash on Hand / Current Cash Balance
+  if (
+    (q.includes('how much') && q.includes('cash')) ||
+    q.includes('current cash') ||
+    q.includes('cash on hand') ||
+    q.includes('cash balance') ||
+    q.includes('total cash') ||
+    q.includes('available cash') ||
+    q.includes('what is our cash') ||
+    q.includes('what is my cash') ||
+    q.includes('how much cash')
+  ) {
+    return {
+      mode: 'FINANCIAL_DATA',
+      subType: 'CASH_QUERY',
+      confidence: 0.98,
+      extractedParameters: { metric: 'cash' },
+    };
+  }
+
   // Spend / Expenses
   if (
     (q.includes('how much') && (q.includes('spend') || q.includes('spent') || q.includes('expense'))) ||

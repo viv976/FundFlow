@@ -199,6 +199,7 @@ export async function generateGroundedResponse(
     isConfiguredApiKey(geminiApiKey) &&
     classified.mode !== 'WHAT_IF_SCENARIO' && // keep hiring simulations 100% deterministic
     classified.mode !== 'EXPLAIN_CALCULATION' && // keep math explanations 100% deterministic
+    classified.subType !== 'CASH_QUERY' && // keep core cash balance 100% authoritative and deterministic
     classified.mode !== 'UNKNOWN_OR_MISSING' // keep refusals strict
   ) {
     try {

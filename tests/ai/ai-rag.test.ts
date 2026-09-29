@@ -329,6 +329,25 @@ describe('Group 5: FundFlow AI/RAG Engineering Suite', () => {
       expect(classifyFinancialIntent('What does our financial plan say about hiring?').subType).toBe('FINANCIAL_PLAN_HIRING');
     });
 
+    it('classifies cash on hand questions into CASH_QUERY', () => {
+      const q1 = classifyFinancialIntent('how much cash do we currently have?');
+      expect(q1.mode).toBe('FINANCIAL_DATA');
+      expect(q1.subType).toBe('CASH_QUERY');
+
+      const q2 = classifyFinancialIntent('what is our current cash?');
+      expect(q2.mode).toBe('FINANCIAL_DATA');
+      expect(q2.subType).toBe('CASH_QUERY');
+
+      const q3 = classifyFinancialIntent('how much cash do we have?');
+      expect(q3.mode).toBe('FINANCIAL_DATA');
+      expect(q3.subType).toBe('CASH_QUERY');
+
+      // Preserve existing calculation explanation
+      const qExplain = classifyFinancialIntent('how is cash calculated?');
+      expect(qExplain.mode).toBe('EXPLAIN_CALCULATION');
+      expect(qExplain.subType).toBe('EXPLAIN_CASH');
+    });
+
     it('classifies what-if scenarios and extracts parameters', () => {
       const intent = classifyFinancialIntent('What if I hire 3 engineers at $120k?');
       expect(intent.mode).toBe('WHAT_IF_SCENARIO');
@@ -341,6 +360,41 @@ describe('Group 5: FundFlow AI/RAG Engineering Suite', () => {
   // SECTION 6: Grounded AI Generator & Evaluation Cases
   // =========================================================================
   describe('6. Full Pipeline Grounding & Evaluation Cases', () => {
+    it('answers cash question with authoritative deterministic figures and citations', async () => {
+      const res = await generateGroundedResponse('how much cash do we currently have?', {
+        workspace: testWorkspaceA,
+        transactions: sampleTransactions,
+        startingCash: 500000,
+      });
+
+      expect(res.grounded).toBe(true);
+      expect(res.detectedIntent).toBe('FINANCIAL_DATA:CASH_QUERY');
+      expect(res.content).toContain('$430K');
+      expect(res.citations?.some((c) => c.id === 'cite-cash' && c.label.includes('$430K'))).toBe(true);
+      expect(res.evidence?.some((e) => e.includes('$430K'))).toBe(true);
+      expect(res.keyPoints?.some((kp) => kp.includes('$430K'))).toBe(true);
+    });
+
+    it('proves configured Gemini API key cannot cause CASH_QUERY to be answered by LLM', async () => {
+      const originalKey = process.env.GEMINI_API_KEY;
+      try {
+        process.env.GEMINI_API_KEY = 'mock-test-gemini-api-key-12345';
+        const res = await generateGroundedResponse('how much cash do we currently have?', {
+          workspace: testWorkspaceA,
+          transactions: sampleTransactions,
+          startingCash: 500000,
+        });
+
+        // Even with GEMINI_API_KEY present, CASH_QUERY bypasses LLM and remains 100% deterministic
+        expect(res.grounded).toBe(true);
+        expect(res.detectedIntent).toBe('FINANCIAL_DATA:CASH_QUERY');
+        expect(res.content).toContain('$430K');
+        expect(res.content).toContain("FundFlow's verified ledger reconciliation");
+      } finally {
+        process.env.GEMINI_API_KEY = originalKey;
+      }
+    });
+
     it('answers runway question with verified figures and citations', async () => {
       const res = await generateGroundedResponse('How long is our runway?', {
         workspace: testWorkspaceA,
