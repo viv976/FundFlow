@@ -337,6 +337,14 @@ export interface SavedScenarioRecord {
   created_at: string;
 }
 
+export interface SavedScenarioModel {
+  id: string;
+  name: string;
+  assumptions: ScenarioAssumptions;
+  createdAt: string;
+}
+
+
 export type RiskSignalType =
   | 'RAPIDLY_INCREASING_BURN'
   | 'DECREASING_CASH_TRAJECTORY'

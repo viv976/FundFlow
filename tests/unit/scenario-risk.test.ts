@@ -3,11 +3,13 @@ import {
   deriveBaselineFromTransactions,
   calculateScenarioModel,
   DEFAULT_SCENARIO_ASSUMPTIONS,
+  createSavedScenarioModel,
+  restoreScenarioAssumptions,
 } from '@/lib/finance/scenario-engine';
 import {
   evaluateRiskSignals,
 } from '@/lib/finance/risk-engine';
-import { Transaction, Workspace } from '@/types/finance';
+import { Transaction, Workspace, ScenarioAssumptions } from '@/types/finance';
 
 const mockWorkspace: Workspace = {
   id: 'ws-test-group6',
@@ -377,5 +379,78 @@ describe('Group 6: Risk Intelligence Engine', () => {
   it('handles insufficient data cleanly in risk engine', () => {
     const alerts = evaluateRiskSignals([], mockWorkspace);
     expect(alerts).toEqual([]);
+  });
+
+  it('correctly packages and restores saved what-if scenario models (Load Model regression)', () => {
+    const nonDefaultAssumptions: ScenarioAssumptions = {
+      monthlyExpensesDelta: 12500, // +$12.5k ops
+      revenueGrowthRateMoM: 18,    // +18% MoM
+      additionalMonthlyRevenue: 6000, // +$6k MRR
+      hiringCount: 4,              // 4 hires
+      hiringCostPerRole: 15000,    // $15k per hire
+      marketingSpendDelta: 7500,   // +$7.5k mktg
+      infrastructureSpendDelta: 4000, // +$4k infra
+    };
+
+    // 1. Create / Save model
+    const savedModel = createSavedScenarioModel('Q4 Aggressive Growth Plan', nonDefaultAssumptions);
+    expect(savedModel.name).toBe('Q4 Aggressive Growth Plan');
+    expect(savedModel.id).toBeDefined();
+    expect(savedModel.createdAt).toBeDefined();
+
+    // 2. Load / Restore model from saved record
+    const restoredFromRecord = restoreScenarioAssumptions(savedModel);
+
+    // 3. Assert EVERY single saved parameter is restored exactly
+    expect(restoredFromRecord.monthlyExpensesDelta).toBe(12500);
+    expect(restoredFromRecord.revenueGrowthRateMoM).toBe(18);
+    expect(restoredFromRecord.additionalMonthlyRevenue).toBe(6000);
+    expect(restoredFromRecord.hiringCount).toBe(4);
+    expect(restoredFromRecord.hiringCostPerRole).toBe(15000);
+    expect(restoredFromRecord.marketingSpendDelta).toBe(7500);
+    expect(restoredFromRecord.infrastructureSpendDelta).toBe(4000);
+
+    // Also assert direct assumptions object restore works identically
+    const restoredDirect = restoreScenarioAssumptions(savedModel.assumptions);
+    expect(restoredDirect).toEqual(restoredFromRecord);
+
+    // 4. Assert calculated scenario uses the restored values
+    const baseline = {
+      cash: 200000,
+      monthlyRevenue: 30000,
+      monthlyExpenses: 50000,
+      monthlyNetBurn: 20000,
+      runwayMonths: 10.0,
+      isCashFlowPositive: false,
+      currency: 'USD',
+    };
+
+    const calculatedWithOriginal = calculateScenarioModel(baseline, nonDefaultAssumptions);
+    const calculatedWithRestored = calculateScenarioModel(baseline, restoredFromRecord);
+
+    expect(calculatedWithRestored.scenario.monthlyRevenue).toBe(calculatedWithOriginal.scenario.monthlyRevenue);
+    expect(calculatedWithRestored.scenario.monthlyExpenses).toBe(calculatedWithOriginal.scenario.monthlyExpenses);
+    expect(calculatedWithRestored.scenario.monthlyNetBurn).toBe(calculatedWithOriginal.scenario.monthlyNetBurn);
+    expect(calculatedWithRestored.scenario.runwayMonths).toBe(calculatedWithOriginal.scenario.runwayMonths);
+    expect(calculatedWithRestored.delta.netBurnDelta).toBe(calculatedWithOriginal.delta.netBurnDelta);
+    expect(calculatedWithRestored.trajectory).toEqual(calculatedWithOriginal.trajectory);
+
+    // Verify expected exact numbers:
+    // Incremental costs: 12500 + (4 * 15000) + 7500 + 4000 = 84,000
+    expect(calculatedWithRestored.scenario.totalIncrementalCost).toBe(84000);
+    // Incremental revenue: round(30000 * 0.18) + 6000 = 5400 + 6000 = 11,400
+    expect(calculatedWithRestored.scenario.totalIncrementalRevenue).toBe(11400);
+    // New expenses: 50000 + 84000 = 134,000
+    expect(calculatedWithRestored.scenario.monthlyExpenses).toBe(134000);
+    // New revenue: 30000 + 11400 = 41,400
+    expect(calculatedWithRestored.scenario.monthlyRevenue).toBe(41400);
+    // New net burn: 134000 - 41400 = 92,600
+    expect(calculatedWithRestored.scenario.monthlyNetBurn).toBe(92600);
+    // New runway: round(200000 / 92600, 1) = 2.2 months
+    expect(calculatedWithRestored.scenario.runwayMonths).toBe(2.2);
+
+    // 5. Assert fallback defaults for partial or empty inputs
+    const restoredEmpty = restoreScenarioAssumptions({});
+    expect(restoredEmpty).toEqual(DEFAULT_SCENARIO_ASSUMPTIONS);
   });
 });

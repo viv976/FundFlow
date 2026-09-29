@@ -8,6 +8,7 @@ import type {
   MonthlyTrajectoryPoint,
   ScenarioAnalysisResult,
   ScenarioMethodologyStep,
+  SavedScenarioModel,
 } from '@/types/finance';
 
 export type {
@@ -18,6 +19,7 @@ export type {
   MonthlyTrajectoryPoint,
   ScenarioAnalysisResult,
   ScenarioMethodologyStep,
+  SavedScenarioModel,
 };
 
 
@@ -259,5 +261,66 @@ export function calculateScenarioModel(
       title: 'Deterministic Scenario Calculation Methodology',
       steps: methodologySteps,
     },
+  };
+}
+
+/**
+ * Packages a session-local saved what-if scenario model.
+ * Models remain in-memory and are never written to the ledger database.
+ */
+export function createSavedScenarioModel(
+  name: string,
+  assumptions: ScenarioAssumptions
+): SavedScenarioModel {
+  return {
+    id: `scen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: name.trim() || 'Untitled Scenario',
+    assumptions: {
+      ...DEFAULT_SCENARIO_ASSUMPTIONS,
+      ...assumptions,
+    },
+    createdAt: new Date().toLocaleDateString(),
+  };
+}
+
+/**
+ * Defensively restores complete scenario assumptions from a saved scenario model or raw assumptions payload.
+ * Guarantees every single scenario lever is restored as a valid number with defaults for any missing properties.
+ */
+export function restoreScenarioAssumptions(
+  saved: SavedScenarioModel | { assumptions?: Partial<ScenarioAssumptions> } | Partial<ScenarioAssumptions>
+): ScenarioAssumptions {
+  if (!saved || typeof saved !== 'object') {
+    return { ...DEFAULT_SCENARIO_ASSUMPTIONS };
+  }
+
+  // Handle either SavedScenarioModel, wrapper with assumptions property, or direct assumptions object
+  const raw: Partial<ScenarioAssumptions> =
+    'assumptions' in saved && saved.assumptions && typeof saved.assumptions === 'object'
+      ? saved.assumptions
+      : (saved as Partial<ScenarioAssumptions>);
+
+  return {
+    monthlyExpensesDelta: Number.isFinite(Number(raw.monthlyExpensesDelta))
+      ? Number(raw.monthlyExpensesDelta)
+      : DEFAULT_SCENARIO_ASSUMPTIONS.monthlyExpensesDelta,
+    revenueGrowthRateMoM: Number.isFinite(Number(raw.revenueGrowthRateMoM))
+      ? Number(raw.revenueGrowthRateMoM)
+      : DEFAULT_SCENARIO_ASSUMPTIONS.revenueGrowthRateMoM,
+    additionalMonthlyRevenue: Number.isFinite(Number(raw.additionalMonthlyRevenue))
+      ? Number(raw.additionalMonthlyRevenue)
+      : DEFAULT_SCENARIO_ASSUMPTIONS.additionalMonthlyRevenue,
+    hiringCount: Number.isFinite(Number(raw.hiringCount))
+      ? Math.max(0, Math.round(Number(raw.hiringCount)))
+      : DEFAULT_SCENARIO_ASSUMPTIONS.hiringCount,
+    hiringCostPerRole: Number.isFinite(Number(raw.hiringCostPerRole))
+      ? Math.max(0, Number(raw.hiringCostPerRole))
+      : DEFAULT_SCENARIO_ASSUMPTIONS.hiringCostPerRole,
+    marketingSpendDelta: Number.isFinite(Number(raw.marketingSpendDelta))
+      ? Number(raw.marketingSpendDelta)
+      : DEFAULT_SCENARIO_ASSUMPTIONS.marketingSpendDelta,
+    infrastructureSpendDelta: Number.isFinite(Number(raw.infrastructureSpendDelta))
+      ? Number(raw.infrastructureSpendDelta)
+      : DEFAULT_SCENARIO_ASSUMPTIONS.infrastructureSpendDelta,
   };
 }

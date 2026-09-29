@@ -5,11 +5,14 @@ import { useFinance } from '@/lib/store/finance-context';
 import {
   calculateScenarioModel,
   DEFAULT_SCENARIO_ASSUMPTIONS,
+  createSavedScenarioModel,
+  restoreScenarioAssumptions,
 } from '@/lib/finance/scenario-engine';
 import {
   ScenarioAssumptions,
   ScenarioMethodologyStep,
   MonthlyTrajectoryPoint,
+  SavedScenarioModel,
 } from '@/types/finance';
 import { formatCurrency } from '@/lib/finance/calculator';
 
@@ -21,7 +24,7 @@ export default function ScenariosPage() {
 
   // In-memory scenario adjustments (never persisted to financial ledger)
   const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(DEFAULT_SCENARIO_ASSUMPTIONS);
-  const [savedScenarios, setSavedScenarios] = useState<Array<{ name: string; assumptions: ScenarioAssumptions; date: string }>>([]);
+  const [savedScenarios, setSavedScenarios] = useState<SavedScenarioModel[]>([]);
   const [scenarioNameInput, setScenarioNameInput] = useState('');
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [showMethodology, setShowMethodology] = useState(false);
@@ -38,20 +41,18 @@ export default function ScenariosPage() {
   const handleSaveScenario = (e: React.FormEvent) => {
     e.preventDefault();
     if (!scenarioNameInput.trim()) return;
-    setSavedScenarios((prev) => [
-      {
-        name: scenarioNameInput.trim(),
-        assumptions: { ...assumptions },
-        date: new Date().toLocaleDateString(),
-      },
-      ...prev,
-    ]);
+    const newModel = createSavedScenarioModel(scenarioNameInput, assumptions);
+    setSavedScenarios((prev) => [newModel, ...prev]);
     setScenarioNameInput('');
     setShowSaveModal(false);
   };
 
-  const loadSavedScenario = (saved: ScenarioAssumptions) => {
-    setAssumptions({ ...saved });
+  const loadSavedScenario = (saved: SavedScenarioModel | ScenarioAssumptions) => {
+    const restored = restoreScenarioAssumptions(saved);
+    setAssumptions(restored);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const isModified =
@@ -59,6 +60,7 @@ export default function ScenariosPage() {
     assumptions.revenueGrowthRateMoM !== 0 ||
     assumptions.additionalMonthlyRevenue !== 0 ||
     assumptions.hiringCount !== 0 ||
+    assumptions.hiringCostPerRole !== DEFAULT_SCENARIO_ASSUMPTIONS.hiringCostPerRole ||
     assumptions.marketingSpendDelta !== 0 ||
     assumptions.infrastructureSpendDelta !== 0;
 
@@ -599,22 +601,23 @@ export default function ScenariosPage() {
             Saved What-If Models (Current Session)
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {savedScenarios.map((scen, idx) => (
+            {savedScenarios.map((scen) => (
               <div
-                key={idx}
+                key={scen.id}
                 className="p-4 bg-surface-container-low rounded-xl border border-outline-variant/40 flex flex-col justify-between gap-3"
               >
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="font-semibold text-xs text-on-surface">{scen.name}</span>
-                    <span className="text-[10px] font-mono-data text-on-surface-variant">{scen.date}</span>
+                    <span className="text-[10px] font-mono-data text-on-surface-variant">{scen.createdAt}</span>
                   </div>
                   <div className="text-[11px] text-on-surface-variant mt-1">
                     Hires: +{scen.assumptions.hiringCount} | Mktg: {formatCurrency(scen.assumptions.marketingSpendDelta, currency)}
                   </div>
                 </div>
                 <button
-                  onClick={() => loadSavedScenario(scen.assumptions)}
+                  type="button"
+                  onClick={() => loadSavedScenario(scen)}
                   className="px-3 py-1.5 bg-primary text-on-primary rounded-lg text-xs font-semibold hover:bg-primary-container transition-all cursor-pointer self-start"
                 >
                   Load Model
