@@ -134,7 +134,12 @@ describe('POST /api/chat Multi-Tenant Authentication & Authorization', () => {
   });
 
   // Helper to setup mock Supabase responses for authorized calls
-  function setupAuthorizedDbMocks(userId: string, isOwner: boolean, role: string = 'member') {
+  function setupAuthorizedDbMocks(
+    userId: string,
+    isOwner: boolean,
+    role: string = 'member',
+    workspaceOverrides?: Record<string, unknown>
+  ) {
     mockGetUser.mockResolvedValue({
       data: { user: { id: userId, email: `${userId}@example.com` } },
       error: null,
@@ -150,6 +155,7 @@ describe('POST /api/chat Multi-Tenant Authentication & Authorization', () => {
               owner_id: isOwner ? userId : ownerUserId,
               currency: 'USD',
               created_at: '2023-01-01',
+              ...workspaceOverrides,
             },
             error: null,
           }),
@@ -249,5 +255,105 @@ describe('POST /api/chat Multi-Tenant Authentication & Authorization', () => {
     expect(json.content).toContain('Earnings Before Interest, Taxes, Depreciation, and Amortization');
     expect(json.keyPoints).toBeDefined();
     expect(json.requestId).toBeDefined();
+  });
+
+  // 7. Authoritative starting_cash from workspace DB is strictly preserved (No demo fallback)
+  it('strictly preserves authoritative dbWs.starting_cash (₹500K) yielding ₹575K with 5 transactions', async () => {
+    setupAuthorizedDbMocks(ownerUserId, true, 'owner', {
+      name: 'HydRo',
+      currency: 'INR',
+      starting_cash: 500000,
+    });
+
+    const hydroTransactions = [
+      {
+        id: 'tx-1',
+        workspace_id: validWorkspaceId,
+        transaction_date: '2026-03-01',
+        description: 'Customer Payment A',
+        amount: 80000,
+        currency: 'INR',
+        transaction_type: 'income' as const,
+        status: 'completed' as const,
+        category: 'Revenue',
+        source: 'manual' as const,
+      },
+      {
+        id: 'tx-2',
+        workspace_id: validWorkspaceId,
+        transaction_date: '2026-03-05',
+        description: 'Customer Payment B',
+        amount: 40000,
+        currency: 'INR',
+        transaction_type: 'income' as const,
+        status: 'completed' as const,
+        category: 'Revenue',
+        source: 'manual' as const,
+      },
+      {
+        id: 'tx-3',
+        workspace_id: validWorkspaceId,
+        transaction_date: '2026-03-10',
+        description: 'Office Rent',
+        amount: 25000,
+        currency: 'INR',
+        transaction_type: 'expense' as const,
+        status: 'completed' as const,
+        category: 'Facilities',
+        source: 'manual' as const,
+      },
+      {
+        id: 'tx-4',
+        workspace_id: validWorkspaceId,
+        transaction_date: '2026-03-15',
+        description: 'Cloud Hosting',
+        amount: 12000,
+        currency: 'INR',
+        transaction_type: 'expense' as const,
+        status: 'completed' as const,
+        category: 'Software',
+        source: 'manual' as const,
+      },
+      {
+        id: 'tx-5',
+        workspace_id: validWorkspaceId,
+        transaction_date: '2026-03-20',
+        description: 'SaaS Tools',
+        amount: 8000,
+        currency: 'INR',
+        transaction_type: 'expense' as const,
+        status: 'completed' as const,
+        category: 'Software',
+        source: 'manual' as const,
+      },
+    ];
+
+    const req = createRequest(
+      {
+        message: 'how much cash do we currently have?',
+        workspaceId: validWorkspaceId,
+        transactions: hydroTransactions,
+      },
+      'Bearer valid-owner-token'
+    );
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+    expect(json.grounded).toBe(true);
+    expect(json.detectedIntent).toBe('FINANCIAL_DATA:CASH_QUERY');
+
+    // Authoritative calculation: 500,000 starting cash + 75,000 net flow = 575,000 (₹575K)
+    expect(json.content).toContain('₹575K');
+    expect(json.content).toContain('₹500K');
+    expect(json.content).toContain('+₹75K');
+
+    // Must NOT use BASELINE_STARTING_CASH = 1,240,000 (₹1.24M / ₹1.31M)
+    expect(json.content).not.toContain('₹1.31M');
+    expect(json.content).not.toContain('₹1.24M');
+
+    // Citations must match authoritative ₹575K
+    expect(json.citations?.some((c: { id: string; label: string }) => c.id === 'cite-cash' && c.label.includes('₹575K'))).toBe(true);
   });
 });

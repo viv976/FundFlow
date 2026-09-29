@@ -306,6 +306,15 @@ describe('Group 5: FundFlow AI/RAG Engineering Suite', () => {
       expect(context.transactions.largestOutflows[0].amount).toBe(65000);
       expect(context.transactions.largestOutflows[0].merchant).toBe('Gusto');
     });
+
+    it('uses workspace.starting_cash without requiring explicit startingCash parameter', () => {
+      // testWorkspaceA has starting_cash: 500000
+      const context = buildStructuredFinancialContext(testWorkspaceA, sampleTransactions);
+      expect(context.cash.startingBalance).toBe(500000);
+      expect(context.cash.current).toBe(430000);
+      // Does not use BASELINE_STARTING_CASH = 1240000
+      expect(context.cash.startingBalance).not.toBe(1240000);
+    });
   });
 
   // =========================================================================

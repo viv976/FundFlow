@@ -105,6 +105,18 @@ export async function POST(req: NextRequest) {
       name: dbWs.name,
       owner_id: dbWs.owner_id,
       currency: dbWs.currency || 'USD',
+      starting_cash:
+        typeof dbWs.starting_cash === 'number'
+          ? dbWs.starting_cash
+          : dbWs.starting_cash !== undefined && dbWs.starting_cash !== null
+            ? Number(dbWs.starting_cash)
+            : undefined,
+      alert_runway_threshold:
+        typeof dbWs.alert_runway_threshold === 'number'
+          ? dbWs.alert_runway_threshold
+          : dbWs.alert_runway_threshold !== undefined && dbWs.alert_runway_threshold !== null
+            ? Number(dbWs.alert_runway_threshold)
+            : undefined,
       created_at: dbWs.created_at,
     };
 
@@ -161,6 +173,7 @@ export async function POST(req: NextRequest) {
     const aiResponse = await generateGroundedResponse(cleanMessage, {
       workspace: activeWs,
       transactions: transactions || [],
+      startingCash: activeWs.starting_cash,
       monthlySummaries,
       knowledgeDocs,
       documentChunks,
