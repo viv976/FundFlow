@@ -255,3 +255,123 @@ export interface CSVImportResult {
   errors: { row: number; reason: string }[];
   transactions: Transaction[];
 }
+
+// -------------------------------------------------------------
+// GROUP 6: SCENARIO PLANNING & RISK INTELLIGENCE TYPES
+// -------------------------------------------------------------
+
+export interface ScenarioAssumptions {
+  monthlyExpensesDelta: number; // General operational spend adjustment (+/-)
+  revenueGrowthRateMoM: number; // MoM revenue growth rate percentage (+/-)
+  additionalMonthlyRevenue: number; // Direct incremental MRR/contract revenue
+  hiringCount: number; // Headcount changes (+/-)
+  hiringCostPerRole: number; // Monthly cost per headcount
+  marketingSpendDelta: number; // Marketing budget adjustment (+/-)
+  infrastructureSpendDelta: number; // Cloud / Infra budget adjustment (+/-)
+}
+
+export interface ScenarioBaselineMetrics {
+  cash: number;
+  monthlyRevenue: number;
+  monthlyExpenses: number;
+  monthlyNetBurn: number;
+  runwayMonths: number;
+  isCashFlowPositive: boolean;
+  currency: string;
+}
+
+export interface ScenarioProjectedMetrics {
+  monthlyRevenue: number;
+  monthlyExpenses: number;
+  monthlyNetBurn: number;
+  runwayMonths: number;
+  isCashFlowPositive: boolean;
+  totalIncrementalCost: number;
+  totalIncrementalRevenue: number;
+}
+
+export interface ScenarioDeltaMetrics {
+  revenueDelta: number;
+  expensesDelta: number;
+  netBurnDelta: number;
+  runwayDeltaMonths: number | null; // null if transitions between finite and infinite
+  runwayImpactDescription: string;
+}
+
+export interface MonthlyTrajectoryPoint {
+  monthIndex: number;
+  monthLabel: string;
+  baselineCash: number;
+  scenarioCash: number;
+  deltaCash: number;
+}
+
+export interface ScenarioMethodologyStep {
+  step: string;
+  formula: string;
+  explanation: string;
+}
+
+export interface ScenarioAnalysisResult {
+  baseline: ScenarioBaselineMetrics;
+  scenario: ScenarioProjectedMetrics;
+  delta: ScenarioDeltaMetrics;
+  trajectory: MonthlyTrajectoryPoint[];
+  assumptions: ScenarioAssumptions;
+  methodology: {
+    title: string;
+    steps: ScenarioMethodologyStep[];
+  };
+}
+
+export interface SavedScenarioRecord {
+  id: string;
+  workspace_id: string;
+  name: string;
+  description?: string;
+  delta_monthly_burn: number;
+  delta_monthly_revenue: number;
+  baseline_runway: number;
+  projected_runway: number;
+  assumptions: ScenarioAssumptions;
+  created_at: string;
+}
+
+export type RiskSignalType =
+  | 'RAPIDLY_INCREASING_BURN'
+  | 'DECREASING_CASH_TRAJECTORY'
+  | 'UNUSUAL_EXPENSE_SPIKE'
+  | 'EXPENSE_CONCENTRATION'
+  | 'REVENUE_DECLINE'
+  | 'RUNWAY_BELOW_THRESHOLD'
+  | 'ABNORMAL_TRANSACTION';
+
+export type DetectionMechanism = 'DETERMINISTIC_DETECTION';
+
+export interface RiskAlertSupportingData {
+  primaryMetric: string;
+  baselineValue?: string | number;
+  observedValue?: string | number;
+  thresholdValue?: string | number;
+  variancePercent?: number;
+  affectedAmount?: number;
+  currency?: string;
+  relatedTransactionCount?: number;
+  evidenceItems?: string[];
+}
+
+export interface RiskAlert {
+  id: string;
+  ruleId: RiskSignalType;
+  detectionMechanism: DetectionMechanism;
+  severity: AlertSeverity; // 'critical' | 'warning' | 'info'
+  title: string;
+  explanation: string;
+  supportingData: RiskAlertSupportingData;
+  affectedPeriod: string;
+  suggestedAction: string;
+  status: 'active' | 'acknowledged' | 'dismissed';
+  createdAt: string;
+  category?: string;
+  actionType?: 'review_expenses' | 'adjust_runway' | 'audit_category' | 'view_transactions' | 'model_scenario';
+}

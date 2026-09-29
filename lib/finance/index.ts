@@ -6,3 +6,5 @@ export {
   formatMonthLabel,
 } from './projections';
 export * from './metric-explanations';
+export * from './scenario-engine';
+export * from './risk-engine';

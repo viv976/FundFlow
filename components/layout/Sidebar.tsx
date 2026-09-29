@@ -16,13 +16,15 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
   { label: 'Transactions', href: '/transactions', icon: 'receipt_long' },
+  { label: 'Scenario Planner', href: '/scenarios', icon: 'query_stats' },
+  { label: 'Risk Alerts', href: '/alerts', icon: 'notifications' },
   { label: 'Reports & Trends', href: '/reports', icon: 'analytics' },
   { label: 'AI Co-Pilot', href: '/ask-ai', icon: 'smart_toy' },
   { label: 'Knowledge Base', href: '/documents', icon: 'menu_book' },
   { label: 'Upload CSV', href: '/upload', icon: 'cloud_upload' },
-  { label: 'Risk Alerts', href: '/alerts', icon: 'notifications' },
   { label: 'Settings', href: '/settings', icon: 'settings' },
 ];
+
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();

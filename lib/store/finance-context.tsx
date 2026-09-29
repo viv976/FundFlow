@@ -14,6 +14,8 @@ import {
   FinancialHealthScore,
   AttentionItem,
   MetricExplanation,
+  RiskAlert,
+  ScenarioBaselineMetrics,
 } from '@/types/finance';
 import {
   DEMO_WORKSPACE,
@@ -28,6 +30,8 @@ import {
   calculateFinancialHealth,
   evaluateAttentionItems,
   getMetricExplanation,
+  evaluateRiskSignals,
+  deriveBaselineFromTransactions,
 } from '@/lib/finance';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import {
@@ -56,6 +60,8 @@ interface FinanceContextType {
   expenseBreakdown: ExpenseBreakdownItem[];
   financialHealth: FinancialHealthScore;
   attentionItems: AttentionItem[];
+  riskAlerts: RiskAlert[];
+  scenarioBaseline: ScenarioBaselineMetrics;
   getMetricDetails: (key: 'cash' | 'burn' | 'runway' | 'growth') => MetricExplanation;
   isLoading: boolean;
   switchWorkspace: (workspaceId: string) => Promise<void>;
@@ -313,6 +319,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     () => evaluateAttentionItems(transactions, workspace),
     [transactions, workspace]
   );
+  const riskAlerts = useMemo(
+    () => evaluateRiskSignals(transactions, workspace),
+    [transactions, workspace]
+  );
+  const scenarioBaseline = useMemo(
+    () => deriveBaselineFromTransactions(transactions, workspace),
+    [transactions, workspace]
+  );
   const getMetricDetails = useCallback(
     (key: 'cash' | 'burn' | 'runway' | 'growth') => getMetricExplanation(key, transactions, workspace),
     [transactions, workspace]
@@ -564,6 +578,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       expenseBreakdown,
       financialHealth,
       attentionItems,
+      riskAlerts,
+      scenarioBaseline,
       getMetricDetails,
       isLoading,
       switchWorkspace,
@@ -592,6 +608,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       expenseBreakdown,
       financialHealth,
       attentionItems,
+      riskAlerts,
+      scenarioBaseline,
       getMetricDetails,
       isLoading,
       switchWorkspace,
@@ -608,6 +626,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       exportTransactionsCSV,
       exportReportJSON,
     ]
+
   );
 
   return <FinanceContext.Provider value={value}>{children}</FinanceContext.Provider>;
