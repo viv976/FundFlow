@@ -64,8 +64,8 @@ export default function SettingsPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn pb-12 w-full">
       {/* Header */}
-      <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/60 shadow-sm w-full">
-        <div className="flex items-center gap-2 mb-1">
+      <div className="bg-surface-container-lowest p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-outline-variant/60 shadow-sm w-full">
+        <div className="flex items-center gap-2 mb-1 flex-wrap">
           <span className="text-[11px] font-mono-data uppercase tracking-wider text-secondary-fixed bg-primary px-2.5 py-0.5 rounded font-bold">
             {workspace.name} Configuration
           </span>
@@ -80,7 +80,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Section 1: Workspace Profile */}
-      <section className="bg-surface-container-lowest border border-outline-variant/70 rounded-2xl p-6 shadow-sm space-y-4 w-full">
+      <section className="bg-surface-container-lowest border border-outline-variant/70 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm space-y-4 w-full">
         <h2 className="text-lg font-bold text-on-surface font-headline-md">
           Workspace Profile
         </h2>
@@ -131,7 +131,7 @@ export default function SettingsPage() {
       {/* Section 2: Alert Thresholds */}
       <form
         onSubmit={handleSavePreferences}
-        className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm space-y-5"
+        className="bg-surface-container-lowest border border-outline-variant rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm space-y-5"
       >
         <div className="flex justify-between items-center">
           <div>
@@ -199,7 +199,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="pt-2 flex items-center justify-between border-t border-outline-variant/50">
+        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-outline-variant/50">
           <label className="flex items-center gap-2 cursor-pointer text-xs font-body-sm text-on-surface">
             <input
               type="checkbox"
@@ -212,7 +212,7 @@ export default function SettingsPage() {
 
           <button
             type="submit"
-            className="px-5 py-2 bg-primary text-on-primary rounded-lg font-label-md text-xs font-semibold hover:bg-primary-container transition-colors shadow-sm"
+            className="px-5 py-2 bg-primary text-on-primary rounded-lg font-label-md text-xs font-semibold hover:bg-primary-container transition-colors shadow-sm self-start sm:self-auto"
           >
             Update Guardrails
           </button>
@@ -220,7 +220,7 @@ export default function SettingsPage() {
       </form>
 
       {/* Section 3: Integrations & Infrastructure */}
-      <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm space-y-4">
+      <section className="bg-surface-container-lowest border border-outline-variant rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
         <h2 className="font-headline-md text-headline-md text-primary font-semibold">
           System Integrations
         </h2>
@@ -261,7 +261,7 @@ export default function SettingsPage() {
       </section>
 
       {/* Section 4: Data Management & Export */}
-      <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 shadow-sm space-y-4">
+      <section className="bg-surface-container-lowest border border-outline-variant rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
         <h2 className="font-headline-md text-headline-md text-primary font-semibold">
           Data Management & Backups
         </h2>
@@ -287,7 +287,7 @@ export default function SettingsPage() {
 
           <button
             onClick={handleReset}
-            className="px-4 py-2 border border-error/50 text-error rounded-lg font-label-md text-xs hover:bg-error-container/30 transition-colors shadow-2xs flex items-center gap-1.5 ml-auto"
+            className="px-4 py-2 border border-error/50 text-error rounded-lg font-label-md text-xs hover:bg-error-container/30 transition-colors shadow-2xs flex items-center gap-1.5 sm:ml-auto"
           >
             <span className="material-symbols-outlined text-[16px]">restart_alt</span>
             Reset to Sample Seed Ledger

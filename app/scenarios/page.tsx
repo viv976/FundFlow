@@ -67,9 +67,9 @@ export default function ScenariosPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn pb-16 w-full">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/60 shadow-sm w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-lowest p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-outline-variant/60 shadow-sm w-full">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="text-[11px] font-mono-data uppercase tracking-wider text-secondary bg-secondary/10 border border-secondary/20 px-2.5 py-0.5 rounded font-bold">
               Deterministic Simulation
             </span>
@@ -109,7 +109,7 @@ export default function ScenariosPage() {
       {/* Primary KPI Comparison: BASELINE vs SCENARIO vs DELTA */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {/* CARD 1: BASELINE */}
-        <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/60 shadow-xs relative">
+        <div className="bg-surface-container-lowest p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-outline-variant/60 shadow-xs relative">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-mono-data uppercase font-bold tracking-wider text-on-surface-variant">
               1. Authoritative Baseline
@@ -160,7 +160,7 @@ export default function ScenariosPage() {
         </div>
 
         {/* CARD 2: SCENARIO */}
-        <div className="bg-surface-container-lowest p-6 rounded-2xl border-2 border-secondary/40 shadow-xs relative">
+        <div className="bg-surface-container-lowest p-4 sm:p-6 rounded-xl sm:rounded-2xl border-2 border-secondary/40 shadow-xs relative">
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-mono-data uppercase font-bold tracking-wider text-secondary">
               2. Simulated Scenario
@@ -218,7 +218,7 @@ export default function ScenariosPage() {
         </div>
 
         {/* CARD 3: DELTA & IMPACT */}
-        <div className={`p-6 rounded-2xl border shadow-xs relative ${
+        <div className={`p-4 sm:p-6 rounded-xl sm:rounded-2xl border shadow-xs relative ${
           analysis.delta.netBurnDelta > 0
             ? 'bg-tertiary-container/10 border-tertiary-fixed-dim/30'
             : 'bg-secondary-container/10 border-secondary-fixed/30'
@@ -268,8 +268,8 @@ export default function ScenariosPage() {
       </div>
 
       {/* Interactive Assumption Controls */}
-      <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/60 shadow-xs space-y-6">
-        <div className="flex items-center justify-between border-b border-outline-variant/40 pb-4">
+      <div className="bg-surface-container-lowest p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-outline-variant/60 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-outline-variant/40 pb-4">
           <div>
             <h2 className="text-lg font-bold text-on-surface font-headline-md">
               Scenario Assumptions & Levers
@@ -308,7 +308,7 @@ export default function ScenariosPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* LEVER 1: Monthly Operational Expenses */}
           <div className="space-y-2 p-4 bg-surface-container-low/50 rounded-xl border border-outline-variant/40">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-1">
               <label className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[18px] text-primary">account_balance</span>
                 <span>General Operational Spend (Δ/mo)</span>
@@ -341,7 +341,7 @@ export default function ScenariosPage() {
 
           {/* LEVER 2: Revenue Growth / Incremental Contract */}
           <div className="space-y-2 p-4 bg-surface-container-low/50 rounded-xl border border-outline-variant/40">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-1">
               <label className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[18px] text-secondary">trending_up</span>
                 <span>Revenue Growth Rate (MoM %)</span>
@@ -374,7 +374,7 @@ export default function ScenariosPage() {
 
           {/* LEVER 3: Hiring & Headcount */}
           <div className="space-y-3 p-4 bg-surface-container-low/50 rounded-xl border border-outline-variant/40">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-1">
               <label className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[18px] text-tertiary-fixed-dim">group_add</span>
                 <span>New Hires Headcount</span>
@@ -397,7 +397,7 @@ export default function ScenariosPage() {
               }
               className="w-full accent-tertiary cursor-pointer"
             />
-            <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
               <span className="text-[11px] text-on-surface-variant">Average Cost Per Role:</span>
               <div className="flex items-center gap-1">
                 <span className="text-xs font-mono-data text-on-surface-variant">$</span>
@@ -422,7 +422,7 @@ export default function ScenariosPage() {
 
           {/* LEVER 4: Marketing & User Acquisition */}
           <div className="space-y-2 p-4 bg-surface-container-low/50 rounded-xl border border-outline-variant/40">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-1">
               <label className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[18px] text-primary">campaign</span>
                 <span>Marketing & Ads Budget (Δ/mo)</span>
@@ -455,7 +455,7 @@ export default function ScenariosPage() {
 
           {/* LEVER 5: Cloud & Infrastructure Spend */}
           <div className="space-y-2 p-4 bg-surface-container-low/50 rounded-xl border border-outline-variant/40">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-1">
               <label className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[18px] text-secondary">cloud</span>
                 <span>Infrastructure & Hosting (Δ/mo)</span>
@@ -491,7 +491,7 @@ export default function ScenariosPage() {
 
           {/* LEVER 6: Direct Contract / Incremental Revenue */}
           <div className="space-y-2 p-4 bg-surface-container-low/50 rounded-xl border border-outline-variant/40">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-1">
               <label className="text-xs font-bold text-on-surface flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[18px] text-secondary">contract</span>
                 <span>New Contract / MRR (Δ/mo)</span>
@@ -529,8 +529,8 @@ export default function ScenariosPage() {
       </div>
 
       {/* 12-Month Projected Trajectory Table */}
-      <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/60 shadow-xs space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="bg-surface-container-lowest p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-outline-variant/60 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-on-surface font-headline-md">
               12-Month Deterministic Trajectory
@@ -596,7 +596,7 @@ export default function ScenariosPage() {
 
       {/* Saved Scenarios Archive */}
       {savedScenarios.length > 0 && (
-        <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/60 shadow-xs space-y-4">
+        <div className="bg-surface-container-lowest p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-outline-variant/60 shadow-xs space-y-4">
           <h2 className="text-base font-bold text-on-surface font-headline-md">
             Saved What-If Models (Current Session)
           </h2>

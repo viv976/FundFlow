@@ -73,9 +73,10 @@ export default function AlertsPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn pb-16 w-full">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/60 shadow-sm w-full">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 bg-surface-container-lowest p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-outline-variant/60 shadow-sm w-full">
+        {/* Section A: Hero Information */}
+        <div className="max-w-2xl">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className="text-[11px] font-mono-data uppercase tracking-wider text-error bg-error/10 border border-error/20 px-2.5 py-0.5 rounded font-bold">
               {riskAlerts.length} Deterministic Signals
             </span>
@@ -84,32 +85,36 @@ export default function AlertsPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight font-headline-lg">
             Risk Intelligence & Guardrails
           </h1>
-          <p className="text-xs text-on-surface-variant mt-1">
+          <p className="text-xs text-on-surface-variant mt-1.5 leading-relaxed">
             Deterministic detection of burn acceleration, runway compression, cash drawdowns, and transactional anomalies.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 flex-wrap">
-          <Link
-            href="/scenarios"
-            className="px-4 py-2.5 bg-secondary text-on-secondary rounded-xl text-xs font-semibold hover:bg-secondary-fixed-dim transition-all shadow-md flex items-center gap-2"
-          >
-            <span className="material-symbols-outlined text-[18px]">query_stats</span>
-            <span>Scenario Planner</span>
-          </Link>
+        {/* Section B: Hero Actions */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0 w-full lg:w-auto">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+            <Link
+              href="/scenarios"
+              className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-secondary text-on-secondary rounded-xl text-xs font-semibold hover:bg-secondary-fixed-dim transition-all shadow-md flex items-center justify-center gap-1.5 sm:gap-2 text-center"
+            >
+              <span className="material-symbols-outlined text-[18px]">query_stats</span>
+              <span className="truncate">Scenario Planner</span>
+            </Link>
 
-          <Link
-            href="/settings"
-            className="px-4 py-2.5 border border-outline-variant rounded-xl bg-surface-container-lowest text-on-surface text-xs font-semibold hover:bg-surface-container transition-all shadow-xs flex items-center gap-2"
-          >
-            <span className="material-symbols-outlined text-[18px]">tune</span>
-            <span>Configure Guardrails</span>
-          </Link>
+            <Link
+              href="/settings"
+              className="px-3.5 py-2 sm:px-4 sm:py-2.5 border border-outline-variant rounded-xl bg-surface-container-lowest text-on-surface text-xs font-semibold hover:bg-surface-container transition-all shadow-xs flex items-center justify-center gap-1.5 sm:gap-2 text-center"
+            >
+              <span className="material-symbols-outlined text-[18px]">tune</span>
+              <span className="truncate">Configure</span>
+            </Link>
+          </div>
 
           {alerts.length > 0 && (
             <button
+              type="button"
               onClick={markAllAlertsRead}
-              className="px-4 py-2.5 bg-primary text-on-primary rounded-xl text-xs font-semibold hover:bg-primary-container transition-all shadow-md flex items-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto px-3.5 py-2 sm:px-4 sm:py-2.5 bg-primary text-on-primary rounded-xl text-xs font-semibold hover:bg-primary-container transition-all shadow-md flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer text-center"
             >
               <span className="material-symbols-outlined text-[18px]">done_all</span>
               <span>Acknowledge All</span>

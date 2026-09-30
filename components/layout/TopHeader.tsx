@@ -3,7 +3,6 @@
 import React from 'react';
 import Link from 'next/link';
 import { useFinance } from '@/lib/store/finance-context';
-import { DEMO_WORKSPACE } from '@/lib/store/demo-data';
 
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
@@ -12,42 +11,41 @@ interface TopHeaderProps {
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = () => {
-  const { user, alerts, signOutUser, workspace } = useFinance();
+  const { user, alerts, signOutUser } = useFinance();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const activeAlerts = alerts.filter((a) => a.status === 'active');
-  const isDemo = workspace.id === DEMO_WORKSPACE.id;
 
   return (
-    <header className="md:hidden flex justify-between items-center px-4 py-3 w-full bg-surface border-b border-outline-variant sticky top-0 z-30 shrink-0">
-      <div className="flex items-center gap-2 max-w-[220px]">
-        <div className="flex-1 min-w-0">
-          <WorkspaceSwitcher />
-        </div>
-        {isDemo && (
-          <span className="px-1.5 py-0.5 rounded bg-primary text-secondary-fixed text-[9px] font-mono-data font-bold uppercase tracking-wide shrink-0">
-            DEMO
-          </span>
-        )}
+    <header className="md:hidden flex justify-between items-center px-3 sm:px-4 py-2 sm:py-2.5 w-full bg-surface border-b border-outline-variant sticky top-0 z-30 shrink-0 select-none">
+      <div className="flex-1 min-w-0 max-w-[220px] sm:max-w-[260px]">
+        <WorkspaceSwitcher />
       </div>
 
-      <div className="flex items-center gap-3">
-        <Link href="/alerts" className="relative p-1 text-on-surface-variant hover:text-primary">
-          <span className="material-symbols-outlined text-[22px]">notifications</span>
+      <div className="flex items-center gap-2 sm:gap-3">
+        <Link
+          href="/alerts"
+          aria-label={`Risk alerts${activeAlerts.length > 0 ? ` (${activeAlerts.length} active)` : ''}`}
+          className="relative p-1.5 text-on-surface-variant hover:text-primary rounded-lg transition-colors flex items-center justify-center min-w-[36px] min-h-[36px]"
+        >
+          <span className="material-symbols-outlined text-[20px] sm:text-[22px]">notifications</span>
           {activeAlerts.length > 0 && (
-            <span className="absolute top-0 right-0 w-2 h-2 bg-error rounded-full ring-2 ring-surface"></span>
+            <span className="absolute top-1 right-1 w-2 h-2 bg-error rounded-full ring-2 ring-surface"></span>
           )}
         </Link>
 
         <div className="relative">
           <button
+            type="button"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="w-8 h-8 rounded-full bg-secondary-fixed/20 border border-secondary-fixed/40 flex items-center justify-center font-bold text-xs text-secondary-fixed"
+            aria-expanded={isMenuOpen}
+            aria-label="User profile and session options"
+            className="w-8 h-8 rounded-full bg-secondary-fixed/20 border border-secondary-fixed/40 flex items-center justify-center font-bold text-xs text-secondary-fixed cursor-pointer transition-transform hover:scale-105"
           >
-            {user.full_name.substring(0, 1).toUpperCase()}
+            {user.full_name ? user.full_name.substring(0, 1).toUpperCase() : 'U'}
           </button>
 
           {isMenuOpen && (
-            <div className="absolute right-0 top-full mt-2 w-48 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-xl z-50 p-2 text-xs text-on-surface">
+            <div className="absolute right-0 top-full mt-2 w-48 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-xl z-50 p-2 text-xs text-on-surface animate-in fade-in zoom-in-95 duration-100">
               <div className="px-3 py-2 border-b border-outline-variant/60">
                 <span className="font-semibold block truncate">{user.full_name}</span>
                 <span className="text-[10px] text-on-surface-variant truncate block">{user.email}</span>
@@ -61,11 +59,12 @@ export const TopHeader: React.FC<TopHeaderProps> = () => {
                 <span>Settings</span>
               </Link>
               <button
+                type="button"
                 onClick={() => {
                   setIsMenuOpen(false);
                   signOutUser();
                 }}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-error-container/30 text-error transition-colors text-left"
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-error-container/30 text-error transition-colors text-left cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">logout</span>
                 <span>Sign Out</span>

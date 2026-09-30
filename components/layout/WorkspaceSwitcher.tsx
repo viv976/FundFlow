@@ -28,16 +28,16 @@ export const WorkspaceSwitcher: React.FC = () => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-primary-container/40 hover:bg-primary-container/70 border border-outline-variant/30 text-on-primary transition-all text-left group"
+        className="w-full flex items-center justify-between p-1.5 sm:p-2.5 rounded-xl bg-primary-container/40 hover:bg-primary-container/70 border border-outline-variant/30 text-on-primary transition-all text-left group"
         title="Switch Business Workspace"
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-secondary-fixed/20 border border-secondary-fixed/40 flex items-center justify-center text-secondary-fixed shrink-0 font-bold font-mono-data text-xs">
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary-fixed/20 border border-secondary-fixed/40 flex items-center justify-center text-secondary-fixed shrink-0 font-bold font-mono-data text-xs">
             {workspace.name.substring(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-headline-md text-xs font-bold text-on-primary truncate block">
+              <span className="text-xs font-bold text-on-primary truncate block">
                 {workspace.name}
               </span>
               {isCurrentDemo && (

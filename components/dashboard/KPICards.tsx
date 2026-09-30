@@ -34,11 +34,11 @@ export const KPICards: React.FC = () => {
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
         {/* KPI 1: Cash on Hand */}
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 hover:border-outline transition-all relative overflow-hidden group shadow-sm flex flex-col justify-between">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-            <span className="material-symbols-outlined text-5xl text-primary">account_balance</span>
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-outline transition-all relative overflow-hidden group shadow-sm flex flex-col justify-between">
+          <div className="absolute top-0 right-0 p-3 sm:p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+            <span className="material-symbols-outlined text-4xl sm:text-5xl text-primary">account_balance</span>
           </div>
 
           <div>
@@ -51,17 +51,17 @@ export const KPICards: React.FC = () => {
               </span>
             </div>
 
-            <div className="font-display text-3xl text-on-surface mb-2 font-mono-data font-bold">
+            <div className="font-display text-on-surface mb-1.5 sm:mb-2 font-mono-data font-bold truncate">
               {formattedCash}
             </div>
 
-            <div className="text-xs text-on-surface-variant flex items-center gap-1.5 mb-4">
+            <div className="text-xs text-on-surface-variant flex items-center gap-1.5 mb-3 sm:mb-4">
               <span className="material-symbols-outlined text-[14px] text-primary">history</span>
-              <span>Cumulative Inception-to-Date</span>
+              <span className="truncate">Cumulative Inception-to-Date</span>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-outline-variant/40 flex items-center justify-between">
+          <div className="pt-2.5 sm:pt-3 border-t border-outline-variant/40 flex items-center justify-between">
             <span className="text-[11px] text-on-surface-variant font-medium">
               Net balance
             </span>
@@ -69,16 +69,16 @@ export const KPICards: React.FC = () => {
               onClick={() => setExplainMetric('cash')}
               className="text-[11px] font-semibold text-primary hover:text-primary-container hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
-              <span>Explain this metric</span>
+              <span>Explain</span>
               <span className="material-symbols-outlined text-[13px]">help_outline</span>
             </button>
           </div>
         </div>
 
         {/* KPI 2: Monthly Net Burn */}
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 hover:border-outline transition-all relative overflow-hidden group shadow-sm flex flex-col justify-between">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-            <span className="material-symbols-outlined text-5xl text-error">local_fire_department</span>
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-outline transition-all relative overflow-hidden group shadow-sm flex flex-col justify-between">
+          <div className="absolute top-0 right-0 p-3 sm:p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+            <span className="material-symbols-outlined text-4xl sm:text-5xl text-error">local_fire_department</span>
           </div>
 
           <div>
@@ -87,29 +87,29 @@ export const KPICards: React.FC = () => {
                 Monthly Net Burn
               </span>
               <span className="text-[10px] font-mono-data px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-medium">
-                3-Mo Trailing Deficit
+                3-Mo Deficit
               </span>
             </div>
 
-            <div className="font-display text-3xl text-on-surface mb-2 font-mono-data font-bold">
+            <div className="font-display text-on-surface mb-1.5 sm:mb-2 font-mono-data font-bold truncate">
               {isK0 ? (
-                <span className="text-xl text-on-surface-variant font-medium">Insufficient Data</span>
+                <span className="text-lg sm:text-xl text-on-surface-variant font-medium">Insufficient Data</span>
               ) : kpis.monthlyBurn === 0 ? (
-                <span className="text-xl text-emerald-400 font-medium">No Net Burn</span>
+                <span className="text-lg sm:text-xl text-emerald-400 font-medium">No Net Burn</span>
               ) : (
                 `${formattedBurn}/mo`
               )}
             </div>
 
-            <div className="text-xs text-on-surface-variant flex items-center gap-1.5 mb-4">
+            <div className="text-xs text-on-surface-variant flex items-center gap-1.5 mb-3 sm:mb-4">
               <span className="material-symbols-outlined text-[14px] text-on-surface-variant">calendar_today</span>
-              <span>
-                {isK0 ? 'Requires completed calendar months' : `${k} completed month${k > 1 ? 's' : ''} avg`}
+              <span className="truncate">
+                {isK0 ? 'Requires completed months' : `${k} completed month${k > 1 ? 's' : ''} avg`}
               </span>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-outline-variant/40 flex items-center justify-between">
+          <div className="pt-2.5 sm:pt-3 border-t border-outline-variant/40 flex items-center justify-between">
             <span className="text-[11px] text-on-surface-variant font-medium">
               Monthly deficit
             </span>
@@ -117,16 +117,16 @@ export const KPICards: React.FC = () => {
               onClick={() => setExplainMetric('burn')}
               className="text-[11px] font-semibold text-primary hover:text-primary-container hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
-              <span>Explain this metric</span>
+              <span>Explain</span>
               <span className="material-symbols-outlined text-[13px]">help_outline</span>
             </button>
           </div>
         </div>
 
         {/* KPI 3: Runway */}
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 hover:border-outline transition-all relative overflow-hidden group shadow-sm flex flex-col justify-between">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-            <span className="material-symbols-outlined text-5xl text-on-tertiary-container">flight_takeoff</span>
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-outline transition-all relative overflow-hidden group shadow-sm flex flex-col justify-between">
+          <div className="absolute top-0 right-0 p-3 sm:p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+            <span className="material-symbols-outlined text-4xl sm:text-5xl text-on-tertiary-container">flight_takeoff</span>
           </div>
 
           <div>
@@ -139,17 +139,17 @@ export const KPICards: React.FC = () => {
               </span>
             </div>
 
-            <div className="font-display text-3xl text-on-surface mb-2 font-mono-data font-bold">
+            <div className="font-display text-on-surface mb-1.5 sm:mb-2 font-mono-data font-bold truncate">
               {isK0 ? (
-                <span className="text-xl text-on-surface-variant font-medium">Insufficient Data</span>
+                <span className="text-lg sm:text-xl text-on-surface-variant font-medium">Insufficient Data</span>
               ) : (
                 kpis.runwayDisplay
               )}
             </div>
 
-            <div className="text-xs text-on-surface-variant flex items-center gap-1.5 mb-4">
+            <div className="text-xs text-on-surface-variant flex items-center gap-1.5 mb-3 sm:mb-4">
               <span className="material-symbols-outlined text-[14px] text-primary">schedule</span>
-              <span>
+              <span className="truncate">
                 {isK0
                   ? 'Burn baseline unavailable'
                   : kpis.isCashFlowPositive
@@ -159,7 +159,7 @@ export const KPICards: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-3 border-t border-outline-variant/40 flex items-center justify-between">
+          <div className="pt-2.5 sm:pt-3 border-t border-outline-variant/40 flex items-center justify-between">
             <span className="text-[11px] text-on-surface-variant font-medium">
               Until cash depletion
             </span>
@@ -167,16 +167,16 @@ export const KPICards: React.FC = () => {
               onClick={() => setExplainMetric('runway')}
               className="text-[11px] font-semibold text-primary hover:text-primary-container hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
-              <span>Explain this metric</span>
+              <span>Explain</span>
               <span className="material-symbols-outlined text-[13px]">help_outline</span>
             </button>
           </div>
         </div>
 
         {/* KPI 4: MoM Revenue Growth */}
-        <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl p-6 hover:border-outline transition-all relative overflow-hidden group shadow-sm flex flex-col justify-between">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-            <span className="material-symbols-outlined text-5xl text-secondary">monitoring</span>
+        <div className="bg-surface-container-lowest border border-outline-variant rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-outline transition-all relative overflow-hidden group shadow-sm flex flex-col justify-between">
+          <div className="absolute top-0 right-0 p-3 sm:p-4 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+            <span className="material-symbols-outlined text-4xl sm:text-5xl text-secondary">monitoring</span>
           </div>
 
           <div>
@@ -189,25 +189,25 @@ export const KPICards: React.FC = () => {
               </span>
             </div>
 
-            <div className="font-display text-3xl text-on-surface mb-2 font-mono-data font-bold">
+            <div className="font-display text-on-surface mb-1.5 sm:mb-2 font-mono-data font-bold truncate">
               {growthDisplay}
             </div>
 
-            <div className="text-xs text-on-surface-variant flex items-center gap-1.5 mb-4">
+            <div className="text-xs text-on-surface-variant flex items-center gap-1.5 mb-3 sm:mb-4">
               <span className="material-symbols-outlined text-[14px] text-secondary">trending_up</span>
-              <span>{growthSubtext}</span>
+              <span className="truncate">{growthSubtext}</span>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-outline-variant/40 flex items-center justify-between">
+          <div className="pt-2.5 sm:pt-3 border-t border-outline-variant/40 flex items-center justify-between">
             <span className="text-[11px] text-on-surface-variant font-medium">
-              Trailing revenue velocity
+              Revenue velocity
             </span>
             <button
               onClick={() => setExplainMetric('growth')}
               className="text-[11px] font-semibold text-primary hover:text-primary-container hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
-              <span>Explain this metric</span>
+              <span>Explain</span>
               <span className="material-symbols-outlined text-[13px]">help_outline</span>
             </button>
           </div>

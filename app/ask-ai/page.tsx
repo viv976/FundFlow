@@ -183,7 +183,7 @@ export default function AskAIPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto h-[calc(100vh-8rem)] flex flex-col gap-6 animate-fadeIn">
+    <div className="max-w-7xl mx-auto flex flex-col gap-6 animate-fadeIn lg:h-[calc(100dvh-7rem)] w-full">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
@@ -192,13 +192,13 @@ export default function AskAIPage() {
             <span>•</span>
             <span className="text-secondary font-bold">Grounded Financial AI</span>
           </div>
-          <h1 className="font-headline-lg text-headline-lg text-primary font-bold tracking-tight">
+          <h1 className="font-headline-lg text-primary font-bold tracking-tight">
             Financial Co-Pilot
           </h1>
         </div>
 
         {/* Live Context Badge */}
-        <div className="flex items-center gap-3 bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-xs">
+        <div className="flex items-center gap-3 bg-surface-container-lowest border border-outline-variant rounded-lg px-4 py-2 text-xs shrink-0 self-start sm:self-auto">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
             <span className="font-semibold text-on-surface">Ledger Grounded:</span>
@@ -214,11 +214,11 @@ export default function AskAIPage() {
       </div>
 
       {/* Main Grid: Chat Stream & Scenario Simulator */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 lg:min-h-0">
         {/* Left 2 Columns: Chat Stream */}
-        <div className="lg:col-span-2 flex flex-col bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm">
+        <div className="lg:col-span-2 flex flex-col bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden shadow-sm h-[520px] sm:h-[580px] lg:h-auto min-h-0">
           {/* Messages Feed */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 chat-scroll">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 chat-scroll">
             {messages.map((msg) => {
               const isUser = msg.role === 'user';
 

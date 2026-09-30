@@ -49,9 +49,9 @@ export default function ReportsPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 animate-fadeIn pb-12 w-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/60 shadow-sm w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-surface-container-lowest p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-outline-variant/60 shadow-sm w-full">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span className="text-[11px] font-mono-data uppercase tracking-wider text-secondary-fixed bg-primary px-2.5 py-0.5 rounded font-bold">
               {workspace.currency} Executive Reporting
             </span>
@@ -65,7 +65,7 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 flex-wrap">
           <button
             onClick={exportTransactionsCSV}
             className="px-4 py-2.5 bg-surface-container border border-outline-variant rounded-xl text-xs font-semibold text-on-surface hover:bg-surface-container-high transition-all flex items-center gap-2 cursor-pointer shadow-xs"
@@ -85,7 +85,7 @@ export default function ReportsPage() {
 
       {/* Summary KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-        <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/60 space-y-2 shadow-xs">
+        <div className="bg-surface-container-lowest p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-outline-variant/60 space-y-2 shadow-xs">
           <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider font-label-md">
             Cash On Hand
           </span>
@@ -95,7 +95,7 @@ export default function ReportsPage() {
           <span className="text-[11px] text-outline block">Liquid treasury reserves</span>
         </div>
 
-        <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/60 space-y-2 shadow-xs">
+        <div className="bg-surface-container-lowest p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-outline-variant/60 space-y-2 shadow-xs">
           <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider font-label-md">
             Monthly Net Burn
           </span>
@@ -105,7 +105,7 @@ export default function ReportsPage() {
           <span className="text-[11px] text-outline block">30-day operating deficit</span>
         </div>
 
-        <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/60 space-y-2 shadow-xs">
+        <div className="bg-surface-container-lowest p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-outline-variant/60 space-y-2 shadow-xs">
           <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider font-label-md">
             Runway
           </span>
@@ -115,7 +115,7 @@ export default function ReportsPage() {
           <span className="text-[11px] text-outline block">Until zero cash date</span>
         </div>
 
-        <div className="bg-surface-container-lowest p-5 rounded-2xl border border-outline-variant/60 space-y-2 shadow-xs">
+        <div className="bg-surface-container-lowest p-4 sm:p-5 rounded-xl sm:rounded-2xl border border-outline-variant/60 space-y-2 shadow-xs">
           <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider font-label-md">
             Recorded Transactions
           </span>
@@ -128,8 +128,8 @@ export default function ReportsPage() {
 
       {/* Historical Monthly Summaries Table */}
       {summaries.length > 0 && (
-        <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/60 shadow-sm space-y-4 w-full">
-          <div className="flex justify-between items-center">
+        <div className="bg-surface-container-lowest p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-outline-variant/60 shadow-sm space-y-4 w-full">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
             <div>
               <h2 className="text-lg font-bold text-on-surface font-headline-md">
                 Historical Monthly Financial Summaries
@@ -187,8 +187,8 @@ export default function ReportsPage() {
       )}
 
       {/* Category Expense Breakdown */}
-      <div className="bg-surface-container-lowest p-6 rounded-2xl border border-outline-variant/60 shadow-sm space-y-4 w-full">
-        <div className="flex justify-between items-center">
+      <div className="bg-surface-container-lowest p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-outline-variant/60 shadow-sm space-y-4 w-full">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
           <div>
             <h2 className="text-lg font-bold text-on-surface font-headline-md">
               Operating Expense Distribution

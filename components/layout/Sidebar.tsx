@@ -7,23 +7,7 @@ import { useFinance } from '@/lib/store/finance-context';
 import { DEMO_WORKSPACE } from '@/lib/store/demo-data';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
-interface NavItem {
-  label: string;
-  href: string;
-  icon: string;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
-  { label: 'Transactions', href: '/transactions', icon: 'receipt_long' },
-  { label: 'Scenario Planner', href: '/scenarios', icon: 'query_stats' },
-  { label: 'Risk Alerts', href: '/alerts', icon: 'notifications' },
-  { label: 'Reports & Trends', href: '/reports', icon: 'analytics' },
-  { label: 'AI Co-Pilot', href: '/ask-ai', icon: 'smart_toy' },
-  { label: 'Knowledge Base', href: '/documents', icon: 'menu_book' },
-  { label: 'Upload CSV', href: '/upload', icon: 'cloud_upload' },
-  { label: 'Settings', href: '/settings', icon: 'settings' },
-];
+import { ALL_NAV_ITEMS, isRouteActive } from '@/lib/navigation';
 
 
 export const Sidebar: React.FC = () => {
@@ -66,11 +50,8 @@ export const Sidebar: React.FC = () => {
 
       {/* Primary Navigation */}
       <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
-          const isActive =
-            item.href === '/dashboard'
-              ? pathname === '/dashboard'
-              : pathname.startsWith(item.href);
+        {ALL_NAV_ITEMS.map((item) => {
+          const isActive = isRouteActive(item.href, pathname);
 
           return (
             <Link

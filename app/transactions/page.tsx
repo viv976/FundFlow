@@ -32,30 +32,30 @@ export default function TransactionsPage() {
         </div>
 
         {/* Ledger Quick Stats */}
-        <div className="flex items-center gap-4 bg-surface-bright border border-outline-variant rounded-xl p-3 px-5 text-xs font-mono-data shrink-0">
-          <div>
+        <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 sm:gap-4 bg-surface-bright border border-outline-variant rounded-xl p-3 px-4 sm:px-5 text-xs font-mono-data w-full sm:w-auto shrink-0">
+          <div className="flex-1 sm:flex-initial min-w-[80px]">
             <span className="text-on-surface-variant block text-[10px] uppercase font-label-md">
               Total Inflow
             </span>
-            <span className="text-secondary font-bold font-mono-data text-sm">
+            <span className="text-secondary font-bold font-mono-data text-xs sm:text-sm">
               +{formatCurrency(totalIncome, workspace.currency)}
             </span>
           </div>
-          <div className="h-7 w-px bg-outline-variant"></div>
-          <div>
+          <div className="h-7 w-px bg-outline-variant hidden sm:block"></div>
+          <div className="flex-1 sm:flex-initial min-w-[80px]">
             <span className="text-on-surface-variant block text-[10px] uppercase font-label-md">
               Total Outflow
             </span>
-            <span className="text-error font-bold font-mono-data text-sm">
+            <span className="text-error font-bold font-mono-data text-xs sm:text-sm">
               -{formatCurrency(totalExpense, workspace.currency)}
             </span>
           </div>
-          <div className="h-7 w-px bg-outline-variant"></div>
-          <div>
+          <div className="h-7 w-px bg-outline-variant hidden sm:block"></div>
+          <div className="flex-1 sm:flex-initial min-w-[80px]">
             <span className="text-on-surface-variant block text-[10px] uppercase font-label-md">
               Net Burn Rate
             </span>
-            <span className="text-primary font-bold font-mono-data text-sm">
+            <span className="text-primary font-bold font-mono-data text-xs sm:text-sm">
               {formatCurrency(kpis.monthlyBurn, workspace.currency)}/mo
             </span>
           </div>

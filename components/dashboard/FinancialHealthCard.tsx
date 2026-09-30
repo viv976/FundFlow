@@ -65,7 +65,7 @@ export function FinancialHealthCard() {
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <div className="bg-surface-container-lowest border border-outline-variant/70 rounded-2xl p-6 shadow-sm relative overflow-hidden">
+    <div className="bg-surface-container-lowest border border-outline-variant/70 rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm relative overflow-hidden">
       {/* Top Banner & Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-outline-variant/40">
         <div className="flex items-start gap-3">

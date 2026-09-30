@@ -41,11 +41,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   return (
     <FinanceProvider>
       {isStandalonePage ? (
-        <div className="min-h-screen w-full bg-background text-on-surface">
+        <div className="min-h-screen min-h-[100dvh] w-full bg-background text-on-surface">
           {children}
         </div>
       ) : (
-        <div className="flex h-screen w-screen overflow-hidden bg-background text-on-surface">
+        <div className="flex h-[100dvh] w-full overflow-hidden bg-background text-on-surface">
           {/* Desktop Sidebar */}
           <Sidebar />
 
@@ -53,7 +53,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
           <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
             <DemoBanner />
             <TopHeader />
-            <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
+            <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8 pb-32 md:pb-8">
               {children}
             </main>
           </div>
