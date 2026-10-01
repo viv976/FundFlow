@@ -5,7 +5,11 @@ import { useRouter } from 'next/navigation';
 import { useFinance } from '@/lib/store/finance-context';
 import { DEMO_WORKSPACE } from '@/lib/store/demo-data';
 
-export const WorkspaceSwitcher: React.FC = () => {
+interface WorkspaceSwitcherProps {
+  variant?: 'dark' | 'light';
+}
+
+export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({ variant = 'dark' }) => {
   const router = useRouter();
   const { workspace, workspaces, switchWorkspace } = useFinance();
   const [isOpen, setIsOpen] = useState(false);
@@ -27,32 +31,61 @@ export const WorkspaceSwitcher: React.FC = () => {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-1.5 sm:p-2.5 rounded-xl bg-primary-container/40 hover:bg-primary-container/70 border border-outline-variant/30 text-on-primary transition-all text-left group"
+        className={`w-full flex items-center justify-between p-1.5 sm:p-2.5 rounded-xl transition-all text-left group cursor-pointer ${
+          variant === 'light'
+            ? 'bg-surface-container hover:bg-surface-container-high border border-outline-variant/60 text-on-surface'
+            : 'bg-primary-container/40 hover:bg-primary-container/70 border border-outline-variant/30 text-on-primary'
+        }`}
         title="Switch Business Workspace"
       >
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-secondary-fixed/20 border border-secondary-fixed/40 flex items-center justify-center text-secondary-fixed shrink-0 font-bold font-mono-data text-xs">
+          <div
+            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 font-bold font-mono-data text-xs ${
+              variant === 'light'
+                ? 'bg-secondary/15 border border-secondary/30 text-secondary'
+                : 'bg-secondary-fixed/20 border border-secondary-fixed/40 text-secondary-fixed'
+            }`}
+          >
             {workspace.name.substring(0, 2).toUpperCase()}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-on-primary truncate block">
+              <span
+                className={`text-xs font-bold truncate block ${
+                  variant === 'light' ? 'text-on-surface' : 'text-on-primary'
+                }`}
+              >
                 {workspace.name}
               </span>
               {isCurrentDemo && (
-                <span className="px-1 py-0.2 rounded bg-secondary-fixed/20 text-secondary-fixed text-[8px] font-mono-data font-bold tracking-wide uppercase">
+                <span
+                  className={`px-1 py-0.2 rounded text-[8px] font-mono-data font-bold tracking-wide uppercase ${
+                    variant === 'light'
+                      ? 'bg-secondary/15 text-secondary border border-secondary/30'
+                      : 'bg-secondary-fixed/20 text-secondary-fixed'
+                  }`}
+                >
                   DEMO
                 </span>
               )}
             </div>
-            <span className="text-[10px] font-mono-data text-secondary-fixed uppercase tracking-wider block">
+            <span
+              className={`text-[10px] font-mono-data uppercase tracking-wider block ${
+                variant === 'light' ? 'text-on-surface-variant font-medium' : 'text-secondary-fixed'
+              }`}
+            >
               {workspace.currency} • {isCurrentDemo ? 'Simulated Demo' : 'Active Business'}
             </span>
           </div>
         </div>
 
-        <span className={`material-symbols-outlined text-[18px] text-on-primary-container/80 transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+        <span
+          className={`material-symbols-outlined text-[18px] transition-transform ${
+            variant === 'light' ? 'text-on-surface-variant' : 'text-on-primary-container/80'
+          } ${isOpen ? 'rotate-180' : ''}`}
+        >
           unfold_more
         </span>
       </button>

@@ -125,18 +125,18 @@ export default function AlertsPage() {
 
       {/* Honest Architecture Disclosure: DETERMINISTIC DETECTION vs AI EXPLANATION */}
       <div className="p-4 bg-surface-container-lowest border border-outline-variant/80 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-        <div className="flex items-center gap-3">
+        <div className="flex items-start sm:items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-primary text-[18px]">verified</span>
           </div>
-          <div>
-            <div className="font-semibold text-on-surface flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold text-on-surface flex flex-wrap items-center gap-1.5 sm:gap-2">
               <span>Detection Architecture:</span>
-              <span className="px-1.5 py-0.5 rounded bg-surface-container text-on-surface font-mono-data text-[10px] font-bold border border-outline-variant">
+              <span className="px-1.5 py-0.5 rounded bg-surface-container text-on-surface font-mono-data text-[10px] font-bold border border-outline-variant shrink-0">
                 DETERMINISTIC DETECTION
               </span>
               <span className="text-on-surface-variant font-normal">vs</span>
-              <span className="px-1.5 py-0.5 rounded bg-secondary/15 text-secondary font-mono-data text-[10px] font-bold border border-secondary/20">
+              <span className="px-1.5 py-0.5 rounded bg-secondary/15 text-secondary font-mono-data text-[10px] font-bold border border-secondary/20 shrink-0">
                 AI EXPLANATION
               </span>
             </div>

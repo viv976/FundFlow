@@ -16,9 +16,9 @@ export const TopHeader: React.FC<TopHeaderProps> = () => {
   const activeAlerts = alerts.filter((a) => a.status === 'active');
 
   return (
-    <header className="md:hidden flex justify-between items-center px-3 sm:px-4 py-2 sm:py-2.5 w-full bg-surface border-b border-outline-variant sticky top-0 z-30 shrink-0 select-none">
+    <header className="md:hidden flex justify-between items-center px-3 sm:px-4 py-2 sm:py-2.5 w-full bg-surface border-b border-outline-variant relative z-20 shrink-0 select-none">
       <div className="flex-1 min-w-0 max-w-[220px] sm:max-w-[260px]">
-        <WorkspaceSwitcher />
+        <WorkspaceSwitcher variant="light" />
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
@@ -39,7 +39,7 @@ export const TopHeader: React.FC<TopHeaderProps> = () => {
             onClick={() => setIsMenuOpen(!isMenuOpen)}
             aria-expanded={isMenuOpen}
             aria-label="User profile and session options"
-            className="w-8 h-8 rounded-full bg-secondary-fixed/20 border border-secondary-fixed/40 flex items-center justify-center font-bold text-xs text-secondary-fixed cursor-pointer transition-transform hover:scale-105"
+            className="w-8 h-8 rounded-full bg-secondary/15 border border-secondary/30 flex items-center justify-center font-bold text-xs text-secondary cursor-pointer transition-transform hover:scale-105"
           >
             {user.full_name ? user.full_name.substring(0, 1).toUpperCase() : 'U'}
           </button>

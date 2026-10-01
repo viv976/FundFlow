@@ -388,7 +388,7 @@ export default function AskAIPage() {
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               disabled={isLoading}
-              className="flex-1 px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-lg font-body-sm text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50"
+              className="flex-1 px-4 py-2.5 bg-surface-bright border border-outline-variant rounded-lg font-body-sm text-base md:text-sm text-on-surface placeholder-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary disabled:opacity-50"
             />
             <button
               type="submit"

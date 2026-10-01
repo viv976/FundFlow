@@ -24,7 +24,7 @@ export const DemoBanner: React.FC = () => {
   return (
     <aside
       aria-label="Demo Workspace Notice"
-      className="w-full bg-primary text-on-primary border-b border-secondary-fixed/20 shadow-xs shrink-0 select-none"
+      className="w-full bg-primary text-on-primary border-b border-secondary-fixed/20 shadow-xs shrink-0 select-none relative z-20"
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1.5 sm:py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-3 text-xs">
         <div className="flex items-center gap-2 min-w-0">
