@@ -73,7 +73,7 @@ const CAPABILITIES: Capability[] = [
 
 export const CapabilitiesSection: React.FC = () => {
   return (
-    <section id="capabilities" className="py-16 md:py-24 bg-surface border-t border-outline-variant/40">
+    <section id="capabilities" className="scroll-mt-20 py-16 md:py-24 bg-surface border-t border-outline-variant/40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="max-w-3xl mx-auto text-center space-y-3 mb-12 md:mb-16">

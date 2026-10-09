@@ -34,16 +34,14 @@ export async function POST(req: NextRequest) {
     let userId: string;
 
     if (existing) {
-      userId = existing.id;
-      // Update password and metadata if provided
-      await supabase.auth.admin.updateUserById(userId, {
-        password: password,
-        email_confirm: true,
-        user_metadata: {
-          full_name: cleanFullName,
-          phone: cleanPhone,
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'USER_ALREADY_EXISTS',
+          error: 'An account with this email already exists. Please log in instead.',
         },
-      });
+        { status: 409 }
+      );
     } else {
       // Create new user with confirmed email
       const { data: createdUser, error: createErr } = await supabase.auth.admin.createUser({

@@ -6,15 +6,13 @@ import { usePathname } from 'next/navigation';
 import { useFinance } from '@/lib/store/finance-context';
 import { DEMO_WORKSPACE } from '@/lib/store/demo-data';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
-
 import { ALL_NAV_ITEMS, isRouteActive } from '@/lib/navigation';
-
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
-  const { user, alerts, signOutUser, workspace } = useFinance();
+  const { user, alerts, signOutUser, workspace, isDemo, isLoading } = useFinance();
 
-  const isDemo = workspace.id === DEMO_WORKSPACE.id;
+  const isCurrentDemo = Boolean(isDemo && workspace && workspace.id === DEMO_WORKSPACE.id);
   const unreadAlertsCount = alerts.filter((a) => a.status === 'active').length;
 
   return (
@@ -31,14 +29,14 @@ export const Sidebar: React.FC = () => {
             <span className="font-headline-md text-lg text-on-primary font-bold tracking-tight block">
               FundFlow
             </span>
-            {isDemo && (
+            {isCurrentDemo && (
               <span className="px-1.5 py-0.5 rounded bg-secondary-fixed/20 border border-secondary-fixed/40 text-secondary-fixed text-[9px] font-mono-data font-bold tracking-wide uppercase">
                 DEMO
               </span>
             )}
           </div>
           <span className="text-[10px] font-label-md text-secondary-fixed uppercase tracking-wider block font-bold">
-            {isDemo ? 'Simulated Workspace' : 'Multi-Tenant Ledger'}
+            {isCurrentDemo ? 'Simulated Workspace' : 'Multi-Tenant Ledger'}
           </span>
         </div>
       </div>
@@ -89,21 +87,21 @@ export const Sidebar: React.FC = () => {
         <div className="p-2.5 bg-primary-container rounded-xl border border-primary-fixed-variant/20 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-full bg-secondary-fixed/20 border border-secondary-fixed/40 flex items-center justify-center text-secondary-fixed shrink-0 font-bold font-mono-data text-xs">
-              {user.full_name.substring(0, 1).toUpperCase()}
+              {user?.full_name ? user.full_name.substring(0, 1).toUpperCase() : 'U'}
             </div>
             <div className="flex flex-col min-w-0">
               <span className="font-label-md text-xs text-on-primary truncate font-semibold">
-                {user.full_name}
+                {user?.full_name || (isLoading ? 'Loading...' : 'Account')}
               </span>
               <span className="font-body-sm text-[10px] text-on-primary-fixed-variant truncate">
-                {user.email}
+                {user?.email || ''}
               </span>
             </div>
           </div>
 
           <button
             onClick={signOutUser}
-            className="p-1.5 hover:bg-primary/40 text-on-primary-container hover:text-on-primary rounded-lg transition-colors"
+            className="p-1.5 hover:bg-primary/40 text-on-primary-container hover:text-on-primary rounded-lg transition-colors cursor-pointer"
             title="Sign Out"
           >
             <span className="material-symbols-outlined text-[18px]">logout</span>

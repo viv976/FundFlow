@@ -4,7 +4,7 @@ import React from 'react';
 
 export const ProductStatusSection: React.FC = () => {
   return (
-    <section id="product-status" className="py-16 md:py-20 bg-surface-container-low/40 border-t border-outline-variant/40">
+    <section id="product-status" className="scroll-mt-20 py-16 md:py-20 bg-surface-container-low/40 border-t border-outline-variant/40">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="text-center space-y-3">
           <span className="text-xs font-mono-data font-bold uppercase tracking-wider text-on-surface-variant bg-surface-container-high px-3 py-1 rounded-md">

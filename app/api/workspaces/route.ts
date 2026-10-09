@@ -39,31 +39,43 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServerSupabaseClient();
 
-    // 2. Resolve User ID
-    let targetUserId = typeof userId === 'string' && userId.trim() ? userId.trim() : null;
+    // 2. Resolve User ID securely from authenticated session token
+    let targetUserId: string | null = null;
+    const authHeader = req.headers.get('authorization');
 
-    if (!targetUserId) {
-      // Check if authenticated in Supabase via header
-      const authHeader = req.headers.get('authorization');
-      if (authHeader) {
-        const token = authHeader.replace(/^Bearer\s+/i, '');
-        if (token) {
-          const { data: userData } = await supabase.auth.getUser(token);
-          if (userData?.user?.id) {
-            targetUserId = userData.user.id;
-          }
+    if (authHeader) {
+      const token = authHeader.replace(/^Bearer\s+/i, '');
+      if (token) {
+        const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+        if (userData?.user?.id) {
+          targetUserId = userData.user.id;
+        } else if (userErr) {
+          return NextResponse.json(
+            { success: false, error: 'Invalid or expired authentication session' },
+            { status: 401 }
+          );
         }
       }
     }
 
-    // If still no user, find the primary profile or fallback to demo founder
-    if (!targetUserId) {
-      const { data: profiles } = await supabase.from('profiles').select('id').limit(1);
-      if (profiles && profiles.length > 0) {
-        targetUserId = profiles[0].id;
-      } else {
-        targetUserId = '2750de4a-7e18-4345-9d29-72385783cf2c';
+    // If body specifies a userId, it must match the authenticated token (if present)
+    if (typeof userId === 'string' && userId.trim()) {
+      if (targetUserId && targetUserId !== userId.trim()) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized: cannot create workspace on behalf of another user' },
+          { status: 403 }
+        );
       }
+      if (!targetUserId) {
+        targetUserId = userId.trim();
+      }
+    }
+
+    if (!targetUserId) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required to create a workspace' },
+        { status: 401 }
+      );
     }
 
     // Verify user profile exists in profiles table before inserting workspace
@@ -160,28 +172,6 @@ export async function POST(req: NextRequest) {
       );
     } catch (catErr) {
       console.warn('Non-fatal note inserting default categories:', catErr);
-    }
-
-    // 7. Insert Initial Opening Cash Transaction if starting cash provided
-    if (numCash > 0) {
-      try {
-        await supabase.from('transactions').insert({
-          workspace_id: createdWorkspace.id,
-          transaction_date: new Date().toISOString().substring(0, 10),
-          amount: numCash,
-          transaction_type: 'income',
-          category: 'Customer Revenue',
-          merchant: 'Initial Liquid Capital',
-          description: 'Opening Cash Reserve',
-          account_name: 'Primary Operating Treasury',
-          currency: cleanCurrency,
-          source: 'manual',
-          is_recurring: false,
-          status: 'completed',
-        });
-      } catch (txErr) {
-        console.warn('Non-fatal note creating initial cash transaction:', txErr);
-      }
     }
 
     return NextResponse.json(

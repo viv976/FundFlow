@@ -43,29 +43,27 @@ export const LandingHeader: React.FC = () => {
         </nav>
 
         {/* Action Buttons */}
-        <div className="hidden sm:flex items-center gap-3">
-          <a
-            href="https://github.com/viv976/FundFlow"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3.5 py-2 border border-outline-variant rounded-xl text-xs font-semibold text-on-surface hover:bg-surface-container transition-all flex items-center gap-1.5 shadow-xs"
+        <div className="hidden sm:flex items-center gap-2.5">
+          <Link
+            href="/demo"
+            className="px-3 py-2 border border-outline-variant rounded-xl text-xs font-semibold text-on-surface hover:bg-surface-container transition-all flex items-center gap-1.5 shadow-xs"
           >
-            <span className="material-symbols-outlined text-[16px]">code</span>
-            <span>View GitHub</span>
-          </a>
+            <span className="material-symbols-outlined text-[15px] text-secondary">play_circle</span>
+            <span>Explore Demo</span>
+          </Link>
 
           <Link
             href="/login"
-            className="px-3.5 py-2 rounded-xl text-xs font-semibold text-primary hover:bg-surface-container transition-colors"
+            className="px-3 py-2 rounded-xl text-xs font-semibold text-primary hover:bg-surface-container transition-colors"
           >
             Sign In
           </Link>
 
           <Link
-            href="/demo"
-            className="px-4 py-2 bg-primary text-on-primary rounded-xl text-xs font-semibold hover:bg-primary-container transition-all shadow-sm flex items-center gap-1.5 group"
+            href="/signup"
+            className="px-3.5 py-2 bg-primary text-on-primary rounded-xl text-xs font-semibold hover:bg-primary-container transition-all shadow-sm flex items-center gap-1.5 group"
           >
-            <span>Explore Demo</span>
+            <span>Create Account</span>
             <span className="material-symbols-outlined text-[15px] group-hover:translate-x-0.5 transition-transform">
               arrow_forward
             </span>
@@ -120,28 +118,27 @@ export const LandingHeader: React.FC = () => {
 
           <div className="pt-3 border-t border-outline-variant flex flex-col gap-2">
             <Link
-              href="/demo"
+              href="/signup"
               onClick={() => setIsMobileMenuOpen(false)}
               className="w-full py-2.5 bg-primary text-on-primary rounded-xl text-xs font-semibold text-center shadow-sm flex items-center justify-center gap-1.5"
             >
-              <span>Explore Demo</span>
+              <span>Create Account</span>
               <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
             </Link>
 
-            <a
-              href="https://github.com/viv976/FundFlow"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-2.5 border border-outline-variant text-on-surface rounded-xl text-xs font-semibold text-center flex items-center justify-center gap-1.5"
+            <Link
+              href="/demo"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="w-full py-2.5 border border-outline-variant text-on-surface rounded-xl text-xs font-semibold text-center flex items-center justify-center gap-1.5 hover:bg-surface-container"
             >
-              <span className="material-symbols-outlined text-[16px]">code</span>
-              <span>View GitHub</span>
-            </a>
+              <span className="material-symbols-outlined text-[16px] text-secondary">play_circle</span>
+              <span>Explore Demo</span>
+            </Link>
 
             <Link
               href="/login"
               onClick={() => setIsMobileMenuOpen(false)}
-              className="w-full py-2 text-primary rounded-xl text-xs font-semibold text-center"
+              className="w-full py-2 text-primary rounded-xl text-xs font-semibold text-center hover:bg-surface-container"
             >
               Sign In to Your Workspace
             </Link>

@@ -4,9 +4,11 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signIn } from '@/lib/supabase/auth';
+import { useFinance } from '@/lib/store/finance-context';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refreshWorkspaces, enterDemoMode } = useFinance();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,9 +20,17 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await signIn(email.trim(), password);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('fundflow_demo_mode_active_v1');
+        localStorage.removeItem('fundflow_demo_mode_active_v1');
+      }
+      const authData = await signIn(email.trim(), password);
+      if (authData?.user?.id) {
+        await refreshWorkspaces(undefined, authData.user.id);
+      } else {
+        await refreshWorkspaces();
+      }
       router.push('/dashboard');
-      router.refresh();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Invalid login credentials';
       setError(msg);
@@ -36,10 +46,15 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await signIn('alex.rivera@demo.fundflow.app', 'DemoPassword2026!');
+      const authData = await signIn('alex.rivera@demo.fundflow.app', 'DemoPassword2026!');
+      if (authData?.user?.id) {
+        await refreshWorkspaces(undefined, authData.user.id);
+      } else {
+        await refreshWorkspaces();
+      }
       router.push('/dashboard');
-      router.refresh();
     } catch {
+      enterDemoMode();
       router.push('/dashboard');
     } finally {
       setIsLoading(false);
@@ -159,9 +174,9 @@ export default function LoginPage() {
 
         {/* Signup Link */}
         <p className="text-center text-xs text-on-surface-variant">
-          Don&apos;t have a business account yet?{' '}
+          Don&apos;t have an account?{' '}
           <Link href="/signup" className="text-primary font-semibold hover:underline">
-            Create new organization &rarr;
+            Create one &rarr;
           </Link>
         </p>
       </div>

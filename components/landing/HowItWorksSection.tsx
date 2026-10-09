@@ -61,7 +61,7 @@ const PIPELINE_STEPS: PipelineStep[] = [
 
 export const HowItWorksSection: React.FC = () => {
   return (
-    <section id="how-it-works" className="py-16 md:py-24 bg-surface-container-low/50 border-t border-outline-variant/40">
+    <section id="how-it-works" className="scroll-mt-20 py-16 md:py-24 bg-surface-container-low/50 border-t border-outline-variant/40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="max-w-3xl mx-auto text-center space-y-3 mb-12 md:mb-16">

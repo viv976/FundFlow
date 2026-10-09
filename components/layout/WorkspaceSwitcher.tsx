@@ -11,11 +11,11 @@ interface WorkspaceSwitcherProps {
 
 export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({ variant = 'dark' }) => {
   const router = useRouter();
-  const { workspace, workspaces, switchWorkspace } = useFinance();
+  const { workspace, workspaces, switchWorkspace, isDemo, isLoading } = useFinance();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const isCurrentDemo = workspace.id === DEMO_WORKSPACE.id;
+  const isCurrentDemo = Boolean(isDemo && workspace && workspace.id === DEMO_WORKSPACE.id);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -27,6 +27,26 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({ variant = 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  if (!workspace || isLoading) {
+    return (
+      <div
+        className={`w-full flex items-center justify-between p-1.5 sm:p-2.5 rounded-xl border ${
+          variant === 'light'
+            ? 'bg-surface-container/60 border-outline-variant/40'
+            : 'bg-primary-container/20 border-outline-variant/20'
+        } animate-pulse`}
+      >
+        <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-outline-variant/30 shrink-0" />
+          <div className="min-w-0 space-y-1">
+            <div className="h-3 w-24 bg-outline-variant/30 rounded" />
+            <div className="h-2 w-16 bg-outline-variant/20 rounded" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -100,7 +120,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({ variant = 
           <div className="max-h-56 overflow-y-auto space-y-1 px-1.5">
             {workspaces.map((ws) => {
               const isSelected = ws.id === workspace.id;
-              const isWsDemo = ws.id === DEMO_WORKSPACE.id;
+              const isWsDemo = Boolean(isDemo && ws.id === DEMO_WORKSPACE.id);
 
               return (
                 <button
@@ -109,7 +129,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({ variant = 
                     await switchWorkspace(ws.id);
                     setIsOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-colors ${
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-colors cursor-pointer ${
                     isSelected
                       ? 'bg-primary/10 text-primary font-semibold'
                       : 'text-on-surface hover:bg-surface-container-low'
@@ -150,7 +170,7 @@ export const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({ variant = 
                 setIsOpen(false);
                 router.push('/onboarding');
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold text-primary hover:bg-primary/10 transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-[16px]">add_circle</span>
               <span>Create New Business</span>

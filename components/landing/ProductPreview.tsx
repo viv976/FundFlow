@@ -5,7 +5,7 @@ import Link from 'next/link';
 
 export const ProductPreview: React.FC = () => {
   return (
-    <section id="product-preview" className="py-16 md:py-24 bg-surface border-t border-outline-variant/40">
+    <section id="product-preview" className="scroll-mt-20 py-16 md:py-24 bg-surface border-t border-outline-variant/40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="max-w-3xl mx-auto text-center space-y-3 mb-10 md:mb-14">
@@ -145,42 +145,63 @@ export const ProductPreview: React.FC = () => {
                   </span>
                 </div>
 
-                {/* SVG Mini Chart */}
-                <div className="h-44 w-full relative">
-                  <svg className="w-full h-full" viewBox="0 0 500 160" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="previewGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#002546" stopOpacity="0.18" />
-                        <stop offset="100%" stopColor="#002546" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <path
-                      d="M 20 50 Q 120 70 200 90 T 350 110 L 480 135 L 480 160 L 20 160 Z"
-                      fill="url(#previewGradient)"
-                    />
-                    <path
-                      d="M 20 50 Q 120 70 200 90 T 350 110"
-                      fill="none"
-                      stroke="#002546"
-                      strokeWidth="2.5"
-                    />
-                    <path
-                      d="M 350 110 L 480 135"
-                      fill="none"
-                      stroke="#002546"
-                      strokeWidth="2"
-                      strokeDasharray="4 4"
-                    />
-                    {/* Points */}
-                    <circle cx="20" cy="50" r="3.5" fill="#002546" />
-                    <circle cx="200" cy="90" r="3.5" fill="#002546" />
-                    <circle cx="350" cy="110" r="4.5" fill="#006c49" stroke="#ffffff" strokeWidth="2" />
-                    <circle cx="480" cy="135" r="3.5" fill="#002546" />
-                  </svg>
-                  <div className="flex justify-between text-[10px] font-mono-data text-outline pt-1">
-                    <span>Aug 2023 ($1.39M)</span>
-                    <span>Current ($1.15M)</span>
-                    <span>Q1 Forecast ($980k)</span>
+                {/* SVG Mini Chart & Timeline Labels */}
+                <div className="w-full space-y-2.5">
+                  <div className="h-36 sm:h-40 w-full relative">
+                    <svg className="w-full h-full" viewBox="0 0 500 160" preserveAspectRatio="none">
+                      <defs>
+                        <linearGradient id="previewGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#002546" stopOpacity="0.18" />
+                          <stop offset="100%" stopColor="#002546" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M 20 50 Q 120 70 200 90 T 350 110 L 480 135 L 480 160 L 20 160 Z"
+                        fill="url(#previewGradient)"
+                      />
+                      <path
+                        d="M 20 50 Q 120 70 200 90 T 350 110"
+                        fill="none"
+                        stroke="#002546"
+                        strokeWidth="2.5"
+                      />
+                      <path
+                        d="M 350 110 L 480 135"
+                        fill="none"
+                        stroke="#002546"
+                        strokeWidth="2"
+                        strokeDasharray="4 4"
+                      />
+                      {/* Points */}
+                      <circle cx="20" cy="50" r="3.5" fill="#002546" />
+                      <circle cx="200" cy="90" r="3.5" fill="#002546" />
+                      <circle cx="350" cy="110" r="4.5" fill="#006c49" stroke="#ffffff" strokeWidth="2" />
+                      <circle cx="480" cy="135" r="3.5" fill="#002546" />
+                    </svg>
+                  </div>
+
+                  {/* Clearly spaced, non-overlapping responsive x-axis labels */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-outline-variant/40 text-[10px] sm:text-[11px] font-mono-data">
+                    {/* Left: Aug 2023 baseline */}
+                    <div className="text-left flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-1.5 min-w-0">
+                      <span className="text-outline">Aug 2023</span>
+                      <span className="text-on-surface font-semibold">($1.39M)</span>
+                    </div>
+
+                    {/* Center: Current balance with matching green indicator dot */}
+                    <div className="text-center flex flex-col sm:flex-row sm:items-baseline justify-center gap-0.5 sm:gap-1.5 min-w-0">
+                      <span className="inline-flex items-center justify-center gap-1 text-secondary font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0" />
+                        Current
+                      </span>
+                      <span className="text-on-surface font-semibold">($1.15M)</span>
+                    </div>
+
+                    {/* Right: Q1 Forecast end projection */}
+                    <div className="text-right flex flex-col sm:flex-row sm:items-baseline justify-end gap-0.5 sm:gap-1.5 min-w-0">
+                      <span className="text-outline">Q1 Forecast</span>
+                      <span className="text-on-surface font-semibold">($980k)</span>
+                    </div>
                   </div>
                 </div>
 

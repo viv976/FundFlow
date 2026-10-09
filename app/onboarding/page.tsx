@@ -96,6 +96,10 @@ export default function OnboardingPage() {
     setIsLoading(true);
 
     try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('fundflow_demo_mode_active_v1');
+        localStorage.removeItem('fundflow_demo_mode_active_v1');
+      }
       // 1. Setup / register founder account
       const authSetupRes = await fetch('/api/auth/setup-account', {
         method: 'POST',

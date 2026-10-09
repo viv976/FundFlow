@@ -32,23 +32,31 @@ export const HeroSection: React.FC = () => {
         {/* Action CTAs */}
         <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3.5">
           <Link
-            href="/demo"
+            href="/signup"
             className="w-full sm:w-auto px-6 py-3.5 bg-primary text-on-primary rounded-xl text-sm font-semibold hover:bg-primary-container transition-all shadow-md flex items-center justify-center gap-2 group"
           >
-            <span>Explore Demo</span>
+            <span>Create Account</span>
             <span className="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition-transform">
               arrow_forward
             </span>
+          </Link>
+
+          <Link
+            href="/demo"
+            className="w-full sm:w-auto px-6 py-3.5 border border-outline-variant bg-surface-container-lowest text-on-surface rounded-xl text-sm font-semibold hover:bg-surface-container transition-all flex items-center justify-center gap-2 shadow-xs"
+          >
+            <span className="material-symbols-outlined text-[18px] text-secondary">play_circle</span>
+            <span>Explore Demo</span>
           </Link>
 
           <a
             href="https://github.com/viv976/FundFlow"
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full sm:w-auto px-6 py-3.5 border border-outline-variant bg-surface-container-lowest text-on-surface rounded-xl text-sm font-semibold hover:bg-surface-container transition-all flex items-center justify-center gap-2 shadow-xs"
+            className="w-full sm:w-auto px-4 py-3.5 border border-outline-variant/60 text-on-surface-variant hover:text-on-surface rounded-xl text-sm font-semibold hover:bg-surface-container transition-all flex items-center justify-center gap-1.5"
           >
             <span className="material-symbols-outlined text-[18px]">code</span>
-            <span>View GitHub</span>
+            <span>GitHub</span>
           </a>
         </div>
 

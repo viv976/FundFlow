@@ -28,7 +28,13 @@ export async function signIn(email: string, password: string) {
 /**
  * Sign up a new user and create their initial profile
  */
-export async function signUp(email: string, password: string, fullName: string, jobTitle: string = 'Founder') {
+export async function signUp(
+  email: string,
+  password: string,
+  fullName: string,
+  jobTitle: string = 'Founder',
+  companyName: string = ''
+) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -36,6 +42,7 @@ export async function signUp(email: string, password: string, fullName: string, 
       data: {
         full_name: fullName,
         job_title: jobTitle,
+        ...(companyName ? { company_name: companyName } : {}),
       },
     },
   });

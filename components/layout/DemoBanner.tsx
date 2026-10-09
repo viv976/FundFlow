@@ -8,23 +8,24 @@ import { DEMO_WORKSPACE } from '@/lib/store/demo-data';
 
 export const DemoBanner: React.FC = () => {
   const router = useRouter();
-  const { workspace } = useFinance();
+  const { workspace, isDemo, exitDemoMode } = useFinance();
 
-  // Reliably identify demo workspace by canonical ID, never by display name
-  const isDemo = workspace.id === DEMO_WORKSPACE.id;
+  // Reliably identify demo workspace by explicit demo mode and canonical ID
+  const isCurrentDemo = Boolean(isDemo && workspace && workspace.id === DEMO_WORKSPACE.id);
 
-  if (!isDemo) {
+  if (!isCurrentDemo || !workspace) {
     return null;
   }
 
   const handleExitDemo = () => {
+    exitDemoMode();
     router.push('/');
   };
 
   return (
     <aside
       aria-label="Demo Workspace Notice"
-      className="w-full bg-primary text-on-primary border-b border-secondary-fixed/20 shadow-xs shrink-0 select-none relative z-20"
+      className="w-full bg-primary text-on-primary border-b border-secondary-fixed/20 shadow-xs shrink-0 select-none relative z-20 pt-[env(safe-area-inset-top,0px)]"
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-1.5 sm:py-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-1.5 sm:gap-3 text-xs">
         <div className="flex items-center gap-2 min-w-0">

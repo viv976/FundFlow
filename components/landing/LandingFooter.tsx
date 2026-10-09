@@ -48,7 +48,10 @@ export const LandingFooter: React.FC = () => {
               <span>GitHub</span>
               <span className="material-symbols-outlined text-[13px]">open_in_new</span>
             </a>
-            <Link href="/demo" className="text-primary hover:underline">
+            <Link href="/signup" className="text-primary hover:underline font-bold">
+              Create Account
+            </Link>
+            <Link href="/demo" className="hover:text-primary transition-colors">
               Explore Demo
             </Link>
             <Link href="/login" className="hover:text-primary transition-colors">

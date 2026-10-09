@@ -7,6 +7,7 @@ import {
   validateWorkspaceInput,
   validateChatInput,
   validateFinancialMetrics,
+  validateSignupInput,
 } from '@/lib/validation';
 
 describe('Validation Boundaries', () => {
@@ -192,6 +193,91 @@ describe('Validation Boundaries', () => {
         runwayMonths: 20,
       });
       expect(invalid).toBe(false);
+    });
+  });
+
+  describe('validateSignupInput', () => {
+    it('accepts valid signup input', () => {
+      const valid = validateSignupInput({
+        fullName: 'Alex Rivera',
+        companyName: 'Acme Technologies',
+        email: 'alex@acme.com',
+        password: 'ValidPassword123!',
+      });
+      expect(valid.isValid).toBe(true);
+      if (valid.isValid) {
+        expect(valid.data.fullName).toBe('Alex Rivera');
+        expect(valid.data.companyName).toBe('Acme Technologies');
+        expect(valid.data.email).toBe('alex@acme.com');
+        expect(valid.data.password).toBe('ValidPassword123!');
+      }
+    });
+
+    it('rejects missing or empty full name', () => {
+      const res = validateSignupInput({
+        fullName: '  ',
+        companyName: 'Acme',
+        email: 'alex@acme.com',
+        password: 'Password123',
+      });
+      expect(res.isValid).toBe(false);
+      if (!res.isValid) {
+        expect(res.errors.some((e) => e.field === 'fullName')).toBe(true);
+      }
+    });
+
+    it('rejects missing or empty company name', () => {
+      const res = validateSignupInput({
+        fullName: 'Alex',
+        companyName: '',
+        email: 'alex@acme.com',
+        password: 'Password123',
+      });
+      expect(res.isValid).toBe(false);
+      if (!res.isValid) {
+        expect(res.errors.some((e) => e.field === 'companyName')).toBe(true);
+      }
+    });
+
+    it('rejects invalid email formats', () => {
+      const res = validateSignupInput({
+        fullName: 'Alex',
+        companyName: 'Acme',
+        email: 'not-an-email',
+        password: 'Password123',
+      });
+      expect(res.isValid).toBe(false);
+      if (!res.isValid) {
+        expect(res.errors.some((e) => e.field === 'email')).toBe(true);
+      }
+    });
+
+    it('rejects passwords shorter than 6 characters', () => {
+      const res = validateSignupInput({
+        fullName: 'Alex',
+        companyName: 'Acme',
+        email: 'alex@acme.com',
+        password: '12345',
+      });
+      expect(res.isValid).toBe(false);
+      if (!res.isValid) {
+        expect(res.errors.some((e) => e.field === 'password')).toBe(true);
+      }
+    });
+
+    it('normalizes email to lowercase and trims spaces', () => {
+      const res = validateSignupInput({
+        fullName: '  Alex Rivera  ',
+        companyName: '  Acme Technologies  ',
+        email: '  ALEX@ACME.COM  ',
+        password: 'Password123',
+      });
+      expect(res.isValid).toBe(true);
+      if (res.isValid) {
+        expect(res.data.fullName).toBe('Alex Rivera');
+        expect(res.data.companyName).toBe('Acme Technologies');
+        expect(res.data.email).toBe('alex@acme.com');
+      }
     });
   });
 });

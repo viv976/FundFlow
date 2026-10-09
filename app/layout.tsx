@@ -1,10 +1,17 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
+import { FinanceProvider } from "@/lib/store/finance-context";
 
 export const metadata: Metadata = {
   title: "FundFlow — Financial Co-Pilot for Startups",
   description: "CFO-level financial clarity without needing a CFO. Track runway, monthly burn, cash flow projections, grounded AI insights, and risk alerts.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -13,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="bg-background text-on-surface">
+    <html lang="en" className="bg-background text-on-surface" data-scroll-behavior="smooth">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -27,7 +34,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen w-full bg-background text-on-surface antialiased">
-        <AppShell>{children}</AppShell>
+        <FinanceProvider>
+          <AppShell>{children}</AppShell>
+        </FinanceProvider>
       </body>
     </html>
   );

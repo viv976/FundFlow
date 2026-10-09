@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useFinance } from '@/lib/store/finance-context';
+import { DEMO_WORKSPACE } from '@/lib/store/demo-data';
 
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 
@@ -11,12 +12,17 @@ interface TopHeaderProps {
 }
 
 export const TopHeader: React.FC<TopHeaderProps> = () => {
-  const { user, alerts, signOutUser } = useFinance();
+  const { user, alerts, signOutUser, workspace, isDemo } = useFinance();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const activeAlerts = alerts.filter((a) => a.status === 'active');
+  const isCurrentDemo = Boolean(isDemo && workspace && workspace.id === DEMO_WORKSPACE.id);
 
   return (
-    <header className="md:hidden flex justify-between items-center px-3 sm:px-4 py-2 sm:py-2.5 w-full bg-surface border-b border-outline-variant relative z-20 shrink-0 select-none">
+    <header
+      className={`md:hidden flex justify-between items-center px-3 sm:px-4 py-2 sm:py-2.5 w-full bg-surface border-b border-outline-variant relative z-20 shrink-0 select-none ${
+        !isCurrentDemo ? 'pt-[max(0.5rem,env(safe-area-inset-top,0px))]' : ''
+      }`}
+    >
       <div className="flex-1 min-w-0 max-w-[220px] sm:max-w-[260px]">
         <WorkspaceSwitcher variant="light" />
       </div>
@@ -41,14 +47,14 @@ export const TopHeader: React.FC<TopHeaderProps> = () => {
             aria-label="User profile and session options"
             className="w-8 h-8 rounded-full bg-secondary/15 border border-secondary/30 flex items-center justify-center font-bold text-xs text-secondary cursor-pointer transition-transform hover:scale-105"
           >
-            {user.full_name ? user.full_name.substring(0, 1).toUpperCase() : 'U'}
+            {user?.full_name ? user.full_name.substring(0, 1).toUpperCase() : 'U'}
           </button>
 
           {isMenuOpen && (
             <div className="absolute right-0 top-full mt-2 w-48 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-xl z-50 p-2 text-xs text-on-surface animate-in fade-in zoom-in-95 duration-100">
               <div className="px-3 py-2 border-b border-outline-variant/60">
-                <span className="font-semibold block truncate">{user.full_name}</span>
-                <span className="text-[10px] text-on-surface-variant truncate block">{user.email}</span>
+                <span className="font-semibold block truncate">{user?.full_name || 'Account'}</span>
+                <span className="text-[10px] text-on-surface-variant truncate block">{user?.email || ''}</span>
               </div>
               <Link
                 href="/settings"

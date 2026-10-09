@@ -4,19 +4,16 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useFinance } from '@/lib/store/finance-context';
-import { DEMO_WORKSPACE } from '@/lib/store/demo-data';
 
 export const DemoLaunchpad: React.FC = () => {
   const router = useRouter();
-  const { resetToDemoData, switchWorkspace } = useFinance();
+  const { enterDemoMode } = useFinance();
   const [isLaunching, setIsLaunching] = useState(false);
 
   const handleLaunchDemo = async () => {
     setIsLaunching(true);
     try {
-      // Ensure the existing demo state is activated
-      resetToDemoData();
-      await switchWorkspace(DEMO_WORKSPACE.id);
+      enterDemoMode();
     } catch (err) {
       console.warn('Demo activation warning:', err);
     } finally {

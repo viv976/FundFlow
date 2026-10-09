@@ -104,7 +104,10 @@ export function mapDatabaseAlert(dbAlert: DatabaseAlert): Alert {
 /**
  * Fetch Initial Workspace, all accessible Workspaces, and User Profile from Supabase
  */
-export async function fetchWorkspaceAndProfile(targetWorkspaceId?: string): Promise<{
+export async function fetchWorkspaceAndProfile(
+  targetWorkspaceId?: string,
+  explicitUserId?: string
+): Promise<{
   workspace: Workspace | null;
   workspaces: Workspace[];
   user: UserProfile | null;
@@ -115,11 +118,15 @@ export async function fetchWorkspaceAndProfile(targetWorkspaceId?: string): Prom
 
   try {
     // 1. Get current auth user if available
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    let session = null;
+    try {
+      const { data } = await supabase.auth.getSession();
+      session = data?.session;
+    } catch (sessionErr) {
+      console.warn('Session retrieval note in fetchWorkspaceAndProfile:', sessionErr);
+    }
 
-    const authUserId = session?.user?.id;
+    const authUserId = explicitUserId || session?.user?.id;
 
     // 2. Fetch accessible workspaces for the user
     let dbWorkspaces: DatabaseWorkspace[] = [];
@@ -152,46 +159,77 @@ export async function fetchWorkspaceAndProfile(targetWorkspaceId?: string): Prom
       }
     }
 
-    // If still no workspaces (e.g. initial demo load), fetch available workspaces
-    if (dbWorkspaces.length === 0) {
-      const { data: wsList } = await supabase
-        .from('workspaces')
-        .select('*')
-        .order('created_at', { ascending: false });
+    // If authenticated user has no workspaces (interrupted onboarding recovery), self-heal by provisioning their workspace
+    if (authUserId && dbWorkspaces.length === 0) {
+      try {
+        const companyName =
+          session?.user?.user_metadata?.company_name ||
+          (session?.user?.user_metadata?.full_name ? `${session.user.user_metadata.full_name}'s Business` : 'My Business Workspace');
 
-      if (wsList && wsList.length > 0) {
-        dbWorkspaces = wsList as DatabaseWorkspace[];
+        const res = await fetch('/api/workspaces', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({
+            userId: authUserId,
+            name: companyName,
+            currency: 'USD',
+            startingCash: 0,
+            alertRunwayThreshold: 6,
+          }),
+        });
+
+        if (res.ok) {
+          const resData = await res.json();
+          if (resData.success && resData.workspace) {
+            dbWorkspaces = [resData.workspace as DatabaseWorkspace];
+          }
+        }
+      } catch (recoveryErr) {
+        console.warn('Auto-provisioning workspace recovery note:', recoveryErr);
       }
     }
 
-    // If targetWorkspaceId is specified but not in list, fetch it directly
-    if (validTargetWsId && !dbWorkspaces.some((w) => w.id === validTargetWsId)) {
-      const { data: targetWs } = await supabase
-        .from('workspaces')
-        .select('*')
-        .eq('id', validTargetWsId)
-        .limit(1)
-        .single();
-      if (targetWs) {
-        dbWorkspaces.unshift(targetWs as DatabaseWorkspace);
-      }
+    // Only authenticated users can access real corporate workspaces
+    if (!authUserId) {
+      return { workspace: null, workspaces: [], user: null };
     }
 
     if (dbWorkspaces.length === 0) {
       return { workspace: null, workspaces: [], user: null };
     }
 
-    // Selected workspace: match target, or prioritize owned workspace, or first in list
-    const selectedDbWs = validTargetWsId
-      ? dbWorkspaces.find((w) => w.id === validTargetWsId) || dbWorkspaces[0]
-      : (authUserId ? dbWorkspaces.find((w) => w.owner_id === authUserId) || dbWorkspaces[0] : dbWorkspaces[0]);
+    // Sort authorized workspaces deterministically:
+    // 1. Owned workspaces first
+    // 2. Created at ascending (oldest/primary workspace first)
+    // 3. UUID as stable tie-breaker
+    dbWorkspaces.sort((a, b) => {
+      const aOwned = a.owner_id === authUserId ? 1 : 0;
+      const bOwned = b.owner_id === authUserId ? 1 : 0;
+      if (bOwned !== aOwned) return bOwned - aOwned;
+      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+      if (aTime !== bTime) return aTime - bTime;
+      return a.id.localeCompare(b.id);
+    });
 
-    // Fetch user profile
-    const profileId = authUserId || selectedDbWs.owner_id;
+    // Selected workspace:
+    // 1. If validTargetWsId is authorized for this user, select it
+    // 2. If validTargetWsId is unauthorized/invalid/not found, reject it and select deterministic primary
+    let selectedDbWs: DatabaseWorkspace;
+    if (validTargetWsId && dbWorkspaces.some((w) => w.id === validTargetWsId)) {
+      selectedDbWs = dbWorkspaces.find((w) => w.id === validTargetWsId)!;
+    } else {
+      selectedDbWs = dbWorkspaces[0];
+    }
+
+    // Fetch user profile for the authenticated user
     const { data: profiles } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', profileId)
+      .eq('id', authUserId)
       .limit(1);
 
     const dbProfile: DatabaseProfile | null = profiles && profiles.length > 0 ? profiles[0] : null;
@@ -217,11 +255,11 @@ export async function fetchWorkspaceAndProfile(targetWorkspaceId?: string): Prom
     };
 
     const user: UserProfile = {
-      id: profileId,
-      full_name: dbProfile?.full_name || session?.user?.user_metadata?.full_name || 'Alex Rivera',
-      email: dbProfile?.email || session?.user?.email || 'alex.rivera@demo.fundflow.app',
+      id: authUserId,
+      full_name: dbProfile?.full_name || session?.user?.user_metadata?.full_name || 'Founder',
+      email: session?.user?.email || dbProfile?.email || '',
       avatar_url: dbProfile?.avatar_url || undefined,
-      role: 'owner',
+      role: selectedDbWs.owner_id === authUserId ? 'owner' : 'member',
     };
 
     return { workspace, workspaces: allWorkspaces, user };

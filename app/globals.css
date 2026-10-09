@@ -84,6 +84,16 @@
   --error: #ba1a1a;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 body {
   font-family: var(--font-inter), 'Inter', sans-serif;
   background-color: #f8f9ff;

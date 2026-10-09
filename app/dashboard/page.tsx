@@ -14,11 +14,15 @@ import { AIInsightsFeed } from '@/components/dashboard/AIInsightsFeed';
 import { TransactionModal } from '@/components/transactions/TransactionModal';
 
 export default function DashboardPage() {
-  const { workspace, addTransaction, exportReportJSON } = useFinance();
+  const { workspace, addTransaction, exportReportJSON, isDemo } = useFinance();
   const [isTxModalOpen, setIsTxModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
-  const isDemo = workspace.id === DEMO_WORKSPACE.id;
+  if (!workspace) {
+    return null;
+  }
+
+  const isCurrentDemo = Boolean(isDemo && workspace.id === DEMO_WORKSPACE.id);
 
   const handleCopyReport = () => {
     const json = exportReportJSON();
@@ -34,14 +38,14 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[11px] font-mono-data uppercase tracking-wider text-secondary-fixed bg-primary px-2.5 py-0.5 rounded font-bold">
-              {isDemo ? 'Simulated Demonstration Ledger' : 'Verified Corporate Ledger'}
+              {isCurrentDemo ? 'Simulated Demonstration Ledger' : 'Verified Corporate Ledger'}
             </span>
             <span className="text-xs text-on-surface-variant font-medium">
-              {isDemo ? '• Demo Sandbox' : '• Live Synced'}
+              {isCurrentDemo ? '• Demo Sandbox' : '• Live Synced'}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-on-surface tracking-tight font-headline-lg">
-            {isDemo ? `${workspace.name} — Financial Intelligence` : 'Financial Intelligence Dashboard'}
+            {isCurrentDemo ? `${workspace.name} — Financial Intelligence` : `${workspace.name} — Financial Dashboard`}
           </h1>
           <p className="text-xs text-on-surface-variant mt-1">
             Deterministic runway, multi-factor health, burn velocity, cash trajectory, and risk mitigation

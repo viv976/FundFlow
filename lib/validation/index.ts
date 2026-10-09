@@ -241,6 +241,79 @@ export function validateWorkspaceInput(raw: unknown): ValidationResult<Validated
 }
 
 /**
+ * Validates user signup inputs
+ */
+export interface ValidatedSignupInput {
+  fullName: string;
+  companyName: string;
+  email: string;
+  password: string;
+}
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function validateSignupInput(raw: unknown): ValidationResult<ValidatedSignupInput> {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      isValid: false,
+      errors: [{ field: 'signup', message: 'Signup payload must be an object' }],
+    };
+  }
+
+  const obj = raw as Record<string, unknown>;
+  const errors: { field: string; message: string }[] = [];
+
+  // Full Name
+  const rawFullName = obj.fullName;
+  if (typeof rawFullName !== 'string' || !rawFullName.trim()) {
+    errors.push({ field: 'fullName', message: 'Full name is required' });
+  }
+  const fullName = typeof rawFullName === 'string' ? rawFullName.trim().slice(0, 100) : '';
+
+  // Company / Business Name
+  const rawCompanyName = obj.companyName;
+  if (typeof rawCompanyName !== 'string' || !rawCompanyName.trim()) {
+    errors.push({ field: 'companyName', message: 'Business / Company name is required' });
+  }
+  const companyName = typeof rawCompanyName === 'string' ? rawCompanyName.trim().slice(0, 150) : '';
+
+  // Email
+  const rawEmail = obj.email;
+  let email = '';
+  if (typeof rawEmail !== 'string' || !rawEmail.trim()) {
+    errors.push({ field: 'email', message: 'Email address is required' });
+  } else {
+    email = rawEmail.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(email)) {
+      errors.push({ field: 'email', message: 'A valid email address is required' });
+    }
+  }
+
+  // Password
+  const rawPassword = obj.password;
+  if (typeof rawPassword !== 'string' || rawPassword.length < 6) {
+    errors.push({ field: 'password', message: 'Password must be at least 6 characters long' });
+  } else if (rawPassword.length > 128) {
+    errors.push({ field: 'password', message: 'Password exceeds maximum length (128 characters)' });
+  }
+  const password = typeof rawPassword === 'string' ? rawPassword : '';
+
+  if (errors.length > 0) {
+    return { isValid: false, errors };
+  }
+
+  return {
+    isValid: true,
+    data: {
+      fullName,
+      companyName,
+      email,
+      password,
+    },
+  };
+}
+
+/**
  * Validates AI chat prompt input
  */
 export function validateChatInput(rawMessage: unknown): ValidationResult<string> {

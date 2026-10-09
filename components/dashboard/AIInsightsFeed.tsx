@@ -113,17 +113,17 @@ export const AIInsightsFeed: React.FC = () => {
     <div className="bg-surface-container-lowest border border-outline-variant/70 rounded-2xl p-6 flex flex-col justify-between shadow-sm min-h-[420px]">
       {/* Header */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 mb-4">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
               <span className="material-symbols-outlined text-lg">smart_toy</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-bold text-on-surface tracking-tight">
                   Financial AI Insights
                 </h2>
-                <span className="text-[10px] font-mono-data px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-semibold">
+                <span className="hidden sm:inline-flex text-[10px] font-mono-data px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-semibold shrink-0">
                   Layer 7
                 </span>
               </div>
@@ -132,13 +132,19 @@ export const AIInsightsFeed: React.FC = () => {
               </p>
             </div>
           </div>
-          <Link
-            href="/ask-ai"
-            className="text-primary font-label-md text-xs hover:underline flex items-center gap-1 font-semibold"
-          >
-            <span>Co-Pilot</span>
-            <span className="material-symbols-outlined text-sm">arrow_forward</span>
-          </Link>
+
+          <div className="flex items-center justify-between sm:justify-end gap-2.5 shrink-0 pl-10.5 sm:pl-0">
+            <span className="sm:hidden text-[10px] font-mono-data px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-semibold shrink-0">
+              Layer 7
+            </span>
+            <Link
+              href="/ask-ai"
+              className="text-primary font-label-md text-xs hover:underline flex items-center gap-1 font-semibold shrink-0 ml-auto sm:ml-0"
+            >
+              <span>Co-Pilot</span>
+              <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </Link>
+          </div>
         </div>
 
         {/* Dynamic Grounded Insights Feed */}
