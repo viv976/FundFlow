@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { DEMO_WORKSPACE, DEMO_USER, DEMO_TRANSACTIONS } from '@/lib/store/demo-data';
 
@@ -6,6 +6,7 @@ import { DEMO_WORKSPACE, DEMO_USER, DEMO_TRANSACTIONS } from '@/lib/store/demo-d
 const mockSignUp = vi.fn();
 const mockAdminFrom = vi.fn();
 const mockGetUser = vi.fn();
+const mockExchangeCodeForSession = vi.fn();
 
 vi.mock('@/lib/supabase/client', () => ({
   supabase: {
@@ -21,6 +22,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createServerSupabaseClient: () => ({
     auth: {
       getUser: (...args: unknown[]) => mockGetUser(...args),
+      exchangeCodeForSession: (...args: unknown[]) => mockExchangeCodeForSession(...args),
     },
     from: (...args: unknown[]) => mockAdminFrom(...args),
   }),
@@ -28,6 +30,14 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import { POST as signupHandler } from '@/app/api/auth/signup/route';
 import { POST as workspaceHandler } from '@/app/api/workspaces/route';
+import { GET as callbackHandler } from '@/app/auth/callback/route';
+import {
+  getAppBaseUrl,
+  getAuthCallbackUrl,
+  validateRedirectUrl,
+  isTrustedOrigin,
+  PRODUCTION_APP_URL,
+} from '@/lib/supabase/auth';
 
 describe('Real User Signup & Workspace Provisioning Architecture', () => {
   beforeEach(() => {
@@ -275,6 +285,286 @@ describe('Real User Signup & Workspace Provisioning Architecture', () => {
       expect(res.status).toBe(403);
       const data = await res.json();
       expect(data.error).toContain('Unauthorized');
+    });
+  });
+
+  describe('Email Confirmation Callback URL & Redirect Destination Security', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const originalAppUrl = process.env.APP_URL;
+    const originalNextPublicAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const originalVercelProdUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+    const originalVercelUrl = process.env.VERCEL_URL;
+
+    afterEach(() => {
+      (process.env as Record<string, string | undefined>).NODE_ENV = originalNodeEnv;
+      if (originalAppUrl !== undefined) {
+        process.env.APP_URL = originalAppUrl;
+      } else {
+        delete process.env.APP_URL;
+      }
+      if (originalNextPublicAppUrl !== undefined) {
+        process.env.NEXT_PUBLIC_APP_URL = originalNextPublicAppUrl;
+      } else {
+        delete process.env.NEXT_PUBLIC_APP_URL;
+      }
+      if (originalVercelProdUrl !== undefined) {
+        process.env.VERCEL_PROJECT_PRODUCTION_URL = originalVercelProdUrl;
+      } else {
+        delete process.env.VERCEL_PROJECT_PRODUCTION_URL;
+      }
+      if (originalVercelUrl !== undefined) {
+        process.env.VERCEL_URL = originalVercelUrl;
+      } else {
+        delete process.env.VERCEL_URL;
+      }
+    });
+
+    describe('Local Development Callback URL Reachability', () => {
+      it('uses localhost:3000 callback when signing up on default local development host', () => {
+        delete process.env.APP_URL;
+        delete process.env.NEXT_PUBLIC_APP_URL;
+        const req = new NextRequest('http://localhost:3000/api/auth/signup', {
+          headers: new Headers({ origin: 'http://localhost:3000' }),
+        });
+        const callbackUrl = getAuthCallbackUrl(req);
+        expect(callbackUrl).toBe('http://localhost:3000/auth/callback');
+      });
+
+      it('uses reachable LAN IP callback URL when user accesses from phone on local Wi-Fi', () => {
+        delete process.env.APP_URL;
+        delete process.env.NEXT_PUBLIC_APP_URL;
+        const req = new NextRequest('http://192.168.1.50:3000/api/auth/signup', {
+          headers: new Headers({
+            origin: 'http://192.168.1.50:3000',
+            host: '192.168.1.50:3000',
+          }),
+        });
+        const callbackUrl = getAuthCallbackUrl(req);
+        expect(callbackUrl).toBe('http://192.168.1.50:3000/auth/callback');
+      });
+
+      it('respects reverse proxy / tunnel headers (x-forwarded-host) in development', () => {
+        delete process.env.APP_URL;
+        delete process.env.NEXT_PUBLIC_APP_URL;
+        const req = new NextRequest('http://localhost:3000/api/auth/signup', {
+          headers: new Headers({
+            'x-forwarded-host': 'my-tunnel.ngrok-free.app',
+            'x-forwarded-proto': 'https',
+          }),
+        });
+        const callbackUrl = getAuthCallbackUrl(req);
+        expect(callbackUrl).toBe('https://my-tunnel.ngrok-free.app/auth/callback');
+      });
+
+      it('prioritizes explicit NEXT_PUBLIC_APP_URL configuration in local development', () => {
+        process.env.NEXT_PUBLIC_APP_URL = 'http://192.168.1.120:3000';
+        const req = new NextRequest('http://localhost:3000/api/auth/signup', {
+          headers: new Headers({ origin: 'http://localhost:3000' }),
+        });
+        const callbackUrl = getAuthCallbackUrl(req);
+        expect(callbackUrl).toBe('http://192.168.1.120:3000/auth/callback');
+      });
+
+      it('rejects untrusted third-party host header in development and falls back to localhost', () => {
+        delete process.env.APP_URL;
+        delete process.env.NEXT_PUBLIC_APP_URL;
+        const req = new NextRequest('http://localhost:3000/api/auth/signup', {
+          headers: new Headers({
+            host: 'attacker.com',
+            origin: 'https://attacker.com',
+            'x-forwarded-host': 'attacker.com',
+          }),
+        });
+        const callbackUrl = getAuthCallbackUrl(req);
+        expect(callbackUrl).toBe('http://localhost:3000/auth/callback');
+      });
+
+      it('passes trusted callback URL to supabase.auth.signUp during signup execution', async () => {
+        mockSignUp.mockResolvedValueOnce({
+          data: {
+            user: { id: 'test-user-id', email: 'founder@test.com', identities: [{ id: '1' }] },
+            session: null,
+          },
+          error: null,
+        });
+
+        const req = new NextRequest('http://192.168.1.88:3000/api/auth/signup', {
+          method: 'POST',
+          headers: new Headers({
+            'Content-Type': 'application/json',
+            origin: 'http://192.168.1.88:3000',
+          }),
+          body: JSON.stringify({
+            fullName: 'Test Founder',
+            companyName: 'Test Tech',
+            email: 'founder@test.com',
+            password: 'ValidPassword123!',
+          }),
+        });
+
+        await signupHandler(req);
+
+        expect(mockSignUp).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: 'founder@test.com',
+            options: expect.objectContaining({
+              emailRedirectTo: 'http://192.168.1.88:3000/auth/callback',
+            }),
+          })
+        );
+      });
+    });
+
+    describe('Production Callback URL Resolution', () => {
+      it('resolves to canonical FundFlow production domain and never localhost in production', () => {
+        delete process.env.APP_URL;
+        delete process.env.NEXT_PUBLIC_APP_URL;
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+
+        // Even if request somehow carries localhost header
+        const req = new NextRequest('http://localhost:3000/api/auth/signup', {
+          headers: new Headers({ origin: 'http://localhost:3000' }),
+        });
+
+        const callbackUrl = getAuthCallbackUrl(req);
+        expect(callbackUrl).toBe(`${PRODUCTION_APP_URL}/auth/callback`);
+        expect(callbackUrl).not.toContain('localhost');
+      });
+
+      it('ignores attacker-controlled Host and X-Forwarded-Host headers in production and strictly uses canonical URL', () => {
+        delete process.env.APP_URL;
+        delete process.env.NEXT_PUBLIC_APP_URL;
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+
+        const req = new NextRequest('http://localhost:3000/api/auth/signup', {
+          headers: new Headers({
+            host: 'attacker-controlled.com',
+            'x-forwarded-host': 'attacker-controlled.com',
+            origin: 'https://attacker-controlled.com',
+          }),
+        });
+
+        const callbackUrl = getAuthCallbackUrl(req);
+        expect(callbackUrl).toBe(`${PRODUCTION_APP_URL}/auth/callback`);
+        expect(callbackUrl).not.toContain('attacker-controlled');
+      });
+
+      it('resolves to custom configured domain when APP_URL is set in production', () => {
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+        process.env.APP_URL = 'https://app.fundflow.co';
+
+        const callbackUrl = getAuthCallbackUrl();
+        expect(callbackUrl).toBe('https://app.fundflow.co/auth/callback');
+      });
+
+      it('rejects misconfigured localhost environment variable in production and falls back to canonical URL', () => {
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+        process.env.APP_URL = 'http://localhost:3000';
+
+        const callbackUrl = getAuthCallbackUrl();
+        expect(callbackUrl).toBe(`${PRODUCTION_APP_URL}/auth/callback`);
+        expect(callbackUrl).not.toContain('localhost');
+      });
+
+      it('rejects misconfigured non-HTTPS environment variable in production and falls back to canonical URL', () => {
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+        process.env.NEXT_PUBLIC_APP_URL = 'http://insecure-domain.com';
+
+        const callbackUrl = getAuthCallbackUrl();
+        expect(callbackUrl).toBe(`${PRODUCTION_APP_URL}/auth/callback`);
+        expect(callbackUrl).not.toContain('insecure-domain.com');
+      });
+    });
+
+    describe('Redirect Destination Validation & Open Redirect Prevention', () => {
+      it('allows safe relative internal application paths', () => {
+        expect(validateRedirectUrl('/dashboard')).toBe('/dashboard');
+        expect(validateRedirectUrl('/login')).toBe('/login');
+        expect(validateRedirectUrl('/onboarding')).toBe('/onboarding');
+        expect(validateRedirectUrl('/dashboard?verified=true')).toBe('/dashboard?verified=true');
+      });
+
+      it('falls back to /dashboard for empty or null inputs', () => {
+        expect(validateRedirectUrl(null)).toBe('/dashboard');
+        expect(validateRedirectUrl(undefined)).toBe('/dashboard');
+        expect(validateRedirectUrl('')).toBe('/dashboard');
+        expect(validateRedirectUrl('   ')).toBe('/dashboard');
+      });
+
+      it('rejects protocol-relative open redirect attacks', () => {
+        expect(validateRedirectUrl('//evil.com')).toBe('/dashboard');
+        expect(validateRedirectUrl('//attacker.com/steal-session')).toBe('/dashboard');
+      });
+
+      it('rejects backslash-trick open redirect attacks', () => {
+        expect(validateRedirectUrl('/\\evil.com')).toBe('/dashboard');
+        expect(validateRedirectUrl('\\evil.com')).toBe('/dashboard');
+      });
+
+      it('rejects javascript and data URIs', () => {
+        expect(validateRedirectUrl('javascript:alert(document.cookie)')).toBe('/dashboard');
+        expect(validateRedirectUrl('/javascript:void(0)')).toBe('/dashboard');
+      });
+
+      it('rejects untrusted third-party domains', () => {
+        expect(validateRedirectUrl('https://evil.com/phishing')).toBe('/dashboard');
+        expect(validateRedirectUrl('http://attacker.org/callback')).toBe('/dashboard');
+      });
+
+      it('converts trusted domain absolute URL to safe internal relative path', () => {
+        expect(validateRedirectUrl(`${PRODUCTION_APP_URL}/onboarding`)).toBe('/onboarding');
+        expect(validateRedirectUrl(`${PRODUCTION_APP_URL}/reports?view=summary`)).toBe('/reports?view=summary');
+      });
+
+      it('trusts canonical production URL and configured Vercel URL, but rejects unrelated Vercel preview hostnames in production', () => {
+        (process.env as Record<string, string | undefined>).NODE_ENV = 'production';
+        process.env.VERCEL_URL = 'fundflow-deployment-123.vercel.app';
+
+        // Canonical production URL is trusted
+        expect(isTrustedOrigin(PRODUCTION_APP_URL)).toBe(true);
+        expect(validateRedirectUrl(`${PRODUCTION_APP_URL}/onboarding`)).toBe('/onboarding');
+
+        // Configured Vercel deployment URL is trusted
+        expect(isTrustedOrigin('https://fundflow-deployment-123.vercel.app')).toBe(true);
+        expect(validateRedirectUrl('https://fundflow-deployment-123.vercel.app/onboarding')).toBe('/onboarding');
+
+        // Unrelated arbitrary Vercel hostname is rejected in production
+        expect(isTrustedOrigin('https://unrelated-attacker.vercel.app')).toBe(false);
+        expect(validateRedirectUrl('https://unrelated-attacker.vercel.app/phishing')).toBe('/dashboard');
+      });
+    });
+
+    describe('Callback Route Handling (GET /auth/callback)', () => {
+      it('exchanges authorization code and redirects to dashboard by default', async () => {
+        mockExchangeCodeForSession.mockResolvedValueOnce({ error: null });
+
+        const req = new NextRequest('http://localhost:3000/auth/callback?code=pkce-auth-code-123');
+        const res = await callbackHandler(req);
+
+        expect(mockExchangeCodeForSession).toHaveBeenCalledWith('pkce-auth-code-123');
+        expect(res.status).toBe(307);
+        expect(res.headers.get('location')).toBe('http://localhost:3000/dashboard');
+      });
+
+      it('redirects to safe validated custom path when valid next parameter is supplied', async () => {
+        mockExchangeCodeForSession.mockResolvedValueOnce({ error: null });
+
+        const req = new NextRequest('http://localhost:3000/auth/callback?code=pkce-auth-code-123&next=/login');
+        const res = await callbackHandler(req);
+
+        expect(res.status).toBe(307);
+        expect(res.headers.get('location')).toBe('http://localhost:3000/login');
+      });
+
+      it('sanitizes malicious next parameter and redirects to safe fallback (/dashboard)', async () => {
+        mockExchangeCodeForSession.mockResolvedValueOnce({ error: null });
+
+        const req = new NextRequest('http://localhost:3000/auth/callback?code=pkce-auth-code-123&next=https://evil.com');
+        const res = await callbackHandler(req);
+
+        expect(res.status).toBe(307);
+        expect(res.headers.get('location')).toBe('http://localhost:3000/dashboard');
+      });
     });
   });
 });
