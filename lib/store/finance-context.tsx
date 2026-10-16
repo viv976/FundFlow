@@ -236,6 +236,50 @@ export const INITIAL_RESOLVING_USER: UserProfile = {
   role: 'owner',
 };
 
+/**
+ * Evaluates whether an automatic runway risk alert should be generated.
+ * Prevents alerts when a workspace has no financial activity (zero non-failed transactions
+ * and zero or non-positive starting cash).
+ */
+export function shouldGenerateRunwayAlert(params: {
+  kpis: Pick<FinancialKPIs, 'runwayMonths' | 'isCashFlowPositive' | 'hasSufficientData'>;
+  alertPreferences: Pick<AlertPreferences, 'runway_threshold_months'>;
+  workspace: Pick<Workspace, 'id' | 'starting_cash'>;
+  transactions?: Pick<Transaction, 'status'>[];
+  alerts: Pick<Alert, 'alert_type' | 'status'>[];
+}): boolean {
+  if (!params.workspace || params.workspace.id === INITIAL_RESOLVING_WORKSPACE.id) {
+    return false;
+  }
+
+  // Prevent automatic runway-risk alert when the workspace has no financial activity
+  const hasTransactions = params.transactions
+    ? params.transactions.some((t) => t.status !== 'failed')
+    : params.kpis.hasSufficientData;
+  const hasStartingCash =
+    typeof params.workspace.starting_cash === 'number' && params.workspace.starting_cash > 0;
+  const hasFinancialActivity = hasTransactions || hasStartingCash;
+
+  if (!hasFinancialActivity) {
+    return false;
+  }
+
+  // Check if runway is below the configured threshold and the business is not cash-flow positive
+  if (
+    params.kpis.runwayMonths >= params.alertPreferences.runway_threshold_months ||
+    params.kpis.isCashFlowPositive
+  ) {
+    return false;
+  }
+
+  // Check if an alert for runway risk already exists (either active or already acknowledged)
+  const existingRunwayAlert = params.alerts.find(
+    (a) => a.alert_type === 'runway_risk' && (a.status === 'active' || a.status === 'acknowledged')
+  );
+
+  return !existingRunwayAlert;
+}
+
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Deterministic neutral initial states matching between SSR and hydration
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
@@ -814,38 +858,40 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (isLoading || workspace.id === INITIAL_RESOLVING_WORKSPACE.id) return;
 
-    // Check runway threshold
-    if (kpis.runwayMonths < alertPreferences.runway_threshold_months && !kpis.isCashFlowPositive) {
-      const existingRunwayAlert = alerts.find(
-        (a) => a.alert_type === 'runway_risk' && a.status === 'active'
-      );
-      if (!existingRunwayAlert) {
-        const alertId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-          ? crypto.randomUUID()
-          : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-              const r = (Math.random() * 16) | 0;
-              const v = c === 'x' ? r : (r & 0x3) | 0x8;
-              return v.toString(16);
-            });
+    if (
+      shouldGenerateRunwayAlert({
+        kpis,
+        alertPreferences,
+        workspace,
+        transactions,
+        alerts,
+      })
+    ) {
+      const alertId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
 
-        const generatedAlert: Alert = {
-          id: alertId,
-          workspace_id: workspace.id,
-          alert_type: 'runway_risk',
-          severity: kpis.runwayMonths < 3 ? 'critical' : 'warning',
-          title: `Low Runway Warning: ${kpis.runwayMonths.toFixed(1)} Months Remaining`,
-          message: `Current operational runway of ${kpis.runwayMonths.toFixed(1)} months is below your configured threshold of ${alertPreferences.runway_threshold_months} months.`,
-          threshold: alertPreferences.runway_threshold_months,
-          current_value: kpis.runwayMonths,
-          status: 'active',
-          created_at: new Date().toISOString(),
-        };
-        queueMicrotask(() => {
-          setAlerts((prev) => [generatedAlert, ...prev]);
-        });
-      }
+      const generatedAlert: Alert = {
+        id: alertId,
+        workspace_id: workspace.id,
+        alert_type: 'runway_risk',
+        severity: kpis.runwayMonths < 3 ? 'critical' : 'warning',
+        title: `Low Runway Warning: ${kpis.runwayMonths.toFixed(1)} Months Remaining`,
+        message: `Current operational runway of ${kpis.runwayMonths.toFixed(1)} months is below your configured threshold of ${alertPreferences.runway_threshold_months} months.`,
+        threshold: alertPreferences.runway_threshold_months,
+        current_value: kpis.runwayMonths,
+        status: 'active',
+        created_at: new Date().toISOString(),
+      };
+      queueMicrotask(() => {
+        setAlerts((prev) => [generatedAlert, ...prev]);
+      });
     }
-  }, [kpis, alertPreferences, workspace, isLoading, alerts]);
+  }, [kpis, alertPreferences, workspace, isLoading, alerts, transactions]);
 
   // Add transaction
   const addTransaction = useCallback(
