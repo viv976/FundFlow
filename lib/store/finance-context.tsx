@@ -639,7 +639,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       console.warn('Sign out notice:', err);
     } finally {
       if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+        window.location.href = '/';
       }
     }
   }, [isDemo]);

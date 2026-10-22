@@ -71,9 +71,11 @@ export const TopHeader: React.FC<TopHeaderProps> = () => {
                   signOutUser();
                 }}
                 className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-error-container/30 text-error transition-colors text-left cursor-pointer"
+                title="Log Out"
+                aria-label="Log Out"
               >
                 <span className="material-symbols-outlined text-sm">logout</span>
-                <span>Sign Out</span>
+                <span>Log Out</span>
               </button>
             </div>
           )}

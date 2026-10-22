@@ -82,31 +82,34 @@ export const Sidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* User Profile & Sign Out */}
-      <div className="p-4 mt-auto border-t border-outline-variant/20 space-y-2">
-        <div className="p-2.5 bg-primary-container rounded-xl border border-primary-fixed-variant/20 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-secondary-fixed/20 border border-secondary-fixed/40 flex items-center justify-center text-secondary-fixed shrink-0 font-bold font-mono-data text-xs">
-              {user?.full_name ? user.full_name.substring(0, 1).toUpperCase() : 'U'}
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="font-label-md text-xs text-on-primary truncate font-semibold">
-                {user?.full_name || (isLoading ? 'Loading...' : 'Account')}
-              </span>
-              <span className="font-body-sm text-[10px] text-on-primary-fixed-variant truncate">
-                {user?.email || ''}
-              </span>
-            </div>
+      {/* User Profile & Log Out */}
+      <div className="p-4 mt-auto border-t border-outline-variant/20 space-y-2 shrink-0">
+        <div className="p-2.5 bg-primary-container rounded-xl border border-primary-fixed-variant/20 flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-secondary-fixed/20 border border-secondary-fixed/40 flex items-center justify-center text-secondary-fixed shrink-0 font-bold font-mono-data text-xs">
+            {user?.full_name ? user.full_name.substring(0, 1).toUpperCase() : 'U'}
           </div>
-
-          <button
-            onClick={signOutUser}
-            className="p-1.5 hover:bg-primary/40 text-on-primary-container hover:text-on-primary rounded-lg transition-colors cursor-pointer"
-            title="Sign Out"
-          >
-            <span className="material-symbols-outlined text-[18px]">logout</span>
-          </button>
+          <div className="flex flex-col min-w-0">
+            <span className="font-label-md text-xs text-on-primary truncate font-semibold">
+              {user?.full_name || (isLoading ? 'Loading...' : 'Account')}
+            </span>
+            <span className="font-body-sm text-[10px] text-on-primary-fixed-variant truncate">
+              {user?.email || ''}
+            </span>
+          </div>
         </div>
+
+        <button
+          type="button"
+          onClick={signOutUser}
+          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-on-primary-container/90 hover:bg-error-container/25 hover:text-error transition-all group cursor-pointer text-left font-medium border border-outline-variant/20"
+          title="Log Out"
+          aria-label="Log Out"
+        >
+          <span className="material-symbols-outlined text-[18px] text-on-primary-container/70 group-hover:text-error transition-colors">
+            logout
+          </span>
+          <span className="font-label-md text-xs font-semibold">Log Out</span>
+        </button>
       </div>
     </aside>
   );

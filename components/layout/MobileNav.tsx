@@ -228,10 +228,12 @@ export const MobileNav: React.FC = () => {
                     setIsMoreOpen(false);
                     signOutUser();
                   }}
-                  className="px-3 py-1.5 rounded-lg border border-error/30 text-error hover:bg-error-container/20 transition-colors flex items-center gap-1 font-semibold text-[11px] shrink-0 cursor-pointer"
+                  className="px-3 py-1.5 rounded-lg border border-error/30 text-error hover:bg-error-container/20 transition-colors flex items-center gap-1.5 font-semibold text-[11px] shrink-0 cursor-pointer"
+                  title="Log Out"
+                  aria-label="Log Out"
                 >
                   <span className="material-symbols-outlined text-[15px]">logout</span>
-                  <span>Sign Out</span>
+                  <span>Log Out</span>
                 </button>
               </div>
             </motion.div>

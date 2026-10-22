@@ -468,3 +468,43 @@ export async function createNewWorkspace(
     throw err;
   }
 }
+
+/**
+ * Permanently deletes the current authenticated user account and associated workspace data.
+ */
+export async function deleteAccount(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const token = session?.access_token;
+    if (!token) {
+      return { success: false, error: 'Authentication required to delete account' };
+    }
+
+    const res = await fetch('/api/auth/delete-account', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) {
+      return {
+        success: false,
+        error: data.error || `Server error (${res.status}): Failed to delete account`,
+      };
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('Exception deleting account:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to delete account',
+    };
+  }
+}
