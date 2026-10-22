@@ -204,7 +204,7 @@ export default function AskAIPage() {
             <span className="font-semibold text-on-surface">Ledger Grounded:</span>
           </div>
           <span className="font-mono-data text-primary font-bold">
-            {formatCurrency(kpis.cashOnHand)} Cash
+            {formatCurrency(kpis.cashOnHand, workspace.currency)} Cash
           </span>
           <span className="text-outline">•</span>
           <span className="font-mono-data text-primary font-bold">

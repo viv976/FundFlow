@@ -468,6 +468,67 @@ export function calculateTotalFromBreakdown(breakdown: ExpenseBreakdownItem[]): 
   return breakdown.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 }
 
+export interface SupportedCurrencyConfig {
+  code: string;
+  symbol: string;
+  name: string;
+}
+
+export const DEFAULT_CURRENCY = 'USD';
+export const DEFAULT_INDUSTRY = 'Technology & SaaS';
+export const DEFAULT_STARTING_CASH = 0;
+export const DEFAULT_RUNWAY_ALERT_THRESHOLD = 6;
+
+export const SUPPORTED_INDUSTRIES = [
+  'Technology & SaaS',
+  'E-Commerce & Retail',
+  'Fintech & Financial Services',
+  'Healthcare & Biotech',
+  'Food, Beverage & Hospitality',
+  'Agency & Professional Services',
+  'Manufacturing & Logistics',
+  'Other Venture',
+] as const;
+
+export type SupportedIndustry = typeof SUPPORTED_INDUSTRIES[number];
+
+export const SUPPORTED_CURRENCIES: SupportedCurrencyConfig[] = [
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar' },
+  { code: 'AUD', symbol: 'AU$', name: 'Australian Dollar' },
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'SGD', symbol: 'SG$', name: 'Singapore Dollar' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+];
+
+/**
+ * Currency name lookup helper
+ */
+export function getCurrencyName(currency: string = 'USD'): string {
+  const code = (currency || 'USD').toUpperCase().trim();
+  switch (code) {
+    case 'INR':
+      return 'Indian Rupee';
+    case 'EUR':
+      return 'Euro';
+    case 'GBP':
+      return 'British Pound';
+    case 'CAD':
+      return 'Canadian Dollar';
+    case 'AUD':
+      return 'Australian Dollar';
+    case 'SGD':
+      return 'Singapore Dollar';
+    case 'JPY':
+      return 'Japanese Yen';
+    case 'USD':
+    default:
+      return 'United States Dollar';
+  }
+}
+
 /**
  * Currency symbol mapping helper
  */

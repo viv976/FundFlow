@@ -4,6 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { validateSignupInput } from '@/lib/validation';
 import { getUserSafeErrorMessage } from '@/lib/errors';
 import { DatabaseWorkspace } from '@/lib/supabase/types';
+import { getAuthCallbackUrl } from '@/lib/supabase/auth';
 
 const DEFAULT_CATEGORIES = [
   { name: 'Customer Revenue', category_type: 'revenue', description: 'Customer and subscription revenue' },
@@ -30,11 +31,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { fullName, companyName, email, password } = validation.data;
+    const {
+      fullName,
+      companyName,
+      email,
+      password,
+      currency,
+      industry,
+      startingCash,
+      alertRunwayThreshold,
+    } = validation.data;
 
-    // Determine redirect origin for email confirmation links
-    const origin = req.headers.get('origin') || req.nextUrl.origin || 'http://localhost:3000';
-    const emailRedirectTo = `${origin}/auth/callback`;
+    // Determine trusted callback URL for email confirmation links
+    const emailRedirectTo = getAuthCallbackUrl(req);
 
     // 1. Create real Supabase Auth user
     const { data: authData, error: authErr } = await supabase.auth.signUp({
@@ -45,6 +54,8 @@ export async function POST(req: NextRequest) {
           full_name: fullName,
           company_name: companyName,
           job_title: 'Founder & CEO',
+          industry: industry || 'Technology & SaaS',
+          currency: currency || 'USD',
         },
         emailRedirectTo,
       },
@@ -132,7 +143,9 @@ export async function POST(req: NextRequest) {
       .eq('owner_id', userId)
       .limit(1);
 
-    if (existingWorkspaces && existingWorkspaces.length > 0) {
+    const isNewWorkspace = !existingWorkspaces || existingWorkspaces.length === 0;
+
+    if (!isNewWorkspace) {
       createdWorkspace = existingWorkspaces[0] as DatabaseWorkspace;
     } else {
       // Generate clean unique slug
@@ -153,16 +166,16 @@ export async function POST(req: NextRequest) {
         slug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
       }
 
-      // Insert clean real workspace with 0 starting cash and ZERO fake transactions
+      // Insert clean real workspace with starting cash and ZERO fake transactions
       const { data: wsData, error: wsErr } = await adminSupabase
         .from('workspaces')
         .insert({
           name: companyName,
           slug,
           owner_id: userId,
-          currency: 'USD',
-          starting_cash: 0,
-          alert_runway_threshold: 6,
+          currency: currency || 'USD',
+          starting_cash: startingCash,
+          alert_runway_threshold: alertRunwayThreshold,
         })
         .select()
         .single();
@@ -188,42 +201,44 @@ export async function POST(req: NextRequest) {
       { onConflict: 'workspace_id,user_id' }
     );
 
-    // 6. Provision Default Categories for the new workspace
-    try {
-      const { data: existingCats } = await adminSupabase
-        .from('transaction_categories')
-        .select('id')
-        .eq('workspace_id', createdWorkspace.id)
-        .limit(1);
+    if (isNewWorkspace) {
+      // 6. Provision Default Categories for the new workspace
+      try {
+        const { data: existingCats } = await adminSupabase
+          .from('transaction_categories')
+          .select('id')
+          .eq('workspace_id', createdWorkspace.id)
+          .limit(1);
 
-      if (!existingCats || existingCats.length === 0) {
-        await adminSupabase.from('transaction_categories').insert(
-          DEFAULT_CATEGORIES.map((cat) => ({
-            workspace_id: createdWorkspace.id,
-            ...cat,
-          }))
-        );
+        if (!existingCats || existingCats.length === 0) {
+          await adminSupabase.from('transaction_categories').insert(
+            DEFAULT_CATEGORIES.map((cat) => ({
+              workspace_id: createdWorkspace.id,
+              ...cat,
+            }))
+          );
+        }
+      } catch (catErr) {
+        console.warn('Non-fatal note initializing transaction categories:', catErr);
       }
-    } catch (catErr) {
-      console.warn('Non-fatal note initializing transaction categories:', catErr);
-    }
 
-    // 7. Provision Default Alert Preferences
-    try {
-      await adminSupabase.from('alert_preferences').upsert(
-        {
-          workspace_id: createdWorkspace.id,
-          runway_threshold_months: 6.0,
-          expense_spike_percentage: 40.0,
-          cash_minimum_threshold: 50000.0,
-          large_transaction_threshold: 10000.0,
-          email_notifications_enabled: true,
-          slack_notifications_enabled: false,
-        },
-        { onConflict: 'workspace_id' }
-      );
-    } catch (prefErr) {
-      console.warn('Non-fatal note initializing alert preferences:', prefErr);
+      // 7. Provision Default Alert Preferences matching the workspace setting
+      try {
+        await adminSupabase.from('alert_preferences').upsert(
+          {
+            workspace_id: createdWorkspace.id,
+            runway_threshold_months: alertRunwayThreshold,
+            expense_spike_percentage: 40.0,
+            cash_minimum_threshold: 50000.0,
+            large_transaction_threshold: 10000.0,
+            email_notifications_enabled: true,
+            slack_notifications_enabled: false,
+          },
+          { onConflict: 'workspace_id' }
+        );
+      } catch (prefErr) {
+        console.warn('Non-fatal note initializing alert preferences:', prefErr);
+      }
     }
 
     // 8. Return response respecting Supabase email confirmation configuration

@@ -5,6 +5,23 @@
  */
 
 import { TransactionType, TransactionStatus, TransactionSource } from '@/types/finance';
+import {
+  SUPPORTED_INDUSTRIES,
+  SupportedIndustry,
+  DEFAULT_CURRENCY,
+  DEFAULT_INDUSTRY,
+  DEFAULT_STARTING_CASH,
+  DEFAULT_RUNWAY_ALERT_THRESHOLD,
+} from '@/lib/finance/calculator';
+
+export {
+  SUPPORTED_INDUSTRIES,
+  type SupportedIndustry,
+  DEFAULT_CURRENCY,
+  DEFAULT_INDUSTRY,
+  DEFAULT_STARTING_CASH,
+  DEFAULT_RUNWAY_ALERT_THRESHOLD,
+};
 
 export interface ValidationSuccess<T> {
   isValid: true;
@@ -41,15 +58,30 @@ export function isValidISODate(dateStr: unknown): boolean {
   return !isNaN(date.getTime());
 }
 
+export const SUPPORTED_CURRENCY_CODES = [
+  'USD',
+  'EUR',
+  'GBP',
+  'CAD',
+  'AUD',
+  'INR',
+  'SGD',
+  'JPY',
+] as const;
+
+export type SupportedCurrencyCode = typeof SUPPORTED_CURRENCY_CODES[number];
+
 /**
  * Sanitizes and extracts a 3-letter standard currency code
  */
 export function sanitizeCurrency(currencyInput?: unknown): string {
   if (typeof currencyInput !== 'string') return 'USD';
   const match = currencyInput.match(/\b([A-Z]{3})\b/i);
-  if (match) return match[1].toUpperCase();
-  const trimmed = currencyInput.trim().toUpperCase();
-  return trimmed.length === 3 ? trimmed : 'USD';
+  const code = (match ? match[1] : currencyInput).trim().toUpperCase();
+  if (SUPPORTED_CURRENCY_CODES.includes(code as SupportedCurrencyCode)) {
+    return code;
+  }
+  return code.length === 3 ? code : 'USD';
 }
 
 /**
@@ -182,6 +214,7 @@ export function validateTransactionInput(raw: unknown): ValidationResult<Validat
 export interface ValidatedWorkspaceInput {
   name: string;
   currency: string;
+  industry: SupportedIndustry;
   startingCash: number;
   alertRunwayThreshold: number;
   userId?: string;
@@ -204,23 +237,68 @@ export function validateWorkspaceInput(raw: unknown): ValidationResult<Validated
   }
   const name = typeof rawName === 'string' ? rawName.trim().slice(0, 150) : '';
 
-  const startingCash = typeof obj.startingCash === 'number'
-    ? obj.startingCash
-    : parseFloat(String(obj.startingCash ?? 500000));
-
-  if (isNaN(startingCash) || startingCash < 0) {
-    errors.push({ field: 'startingCash', message: 'Starting cash cannot be negative' });
+  // Starting cash: finite non-negative number, default 0
+  let startingCash = DEFAULT_STARTING_CASH;
+  if (obj.startingCash !== undefined && obj.startingCash !== null && String(obj.startingCash).trim() !== '') {
+    const parsed = typeof obj.startingCash === 'number' ? obj.startingCash : Number(obj.startingCash);
+    if (!Number.isFinite(parsed) || isNaN(parsed) || parsed < 0) {
+      errors.push({ field: 'startingCash', message: 'Starting cash must be a non-negative finite number' });
+    } else {
+      startingCash = parsed;
+    }
   }
 
-  const alertRunwayThreshold = typeof obj.alertRunwayThreshold === 'number'
-    ? obj.alertRunwayThreshold
-    : parseFloat(String(obj.alertRunwayThreshold ?? 6));
-
-  if (isNaN(alertRunwayThreshold) || alertRunwayThreshold <= 0 || alertRunwayThreshold > 60) {
-    errors.push({ field: 'alertRunwayThreshold', message: 'Runway threshold must be between 1 and 60 months' });
+  // Runway threshold: 1–60 months, default 6
+  let alertRunwayThreshold = DEFAULT_RUNWAY_ALERT_THRESHOLD;
+  const rawThreshold = obj.alertRunwayThreshold ?? obj.runwayThreshold;
+  if (rawThreshold !== undefined && rawThreshold !== null && String(rawThreshold).trim() !== '') {
+    const parsed = typeof rawThreshold === 'number' ? rawThreshold : Number(rawThreshold);
+    if (!Number.isFinite(parsed) || isNaN(parsed) || parsed < 1 || parsed > 60) {
+      errors.push({ field: 'alertRunwayThreshold', message: 'Runway threshold must be between 1 and 60 months' });
+    } else {
+      alertRunwayThreshold = parsed;
+    }
   }
 
-  const currency = sanitizeCurrency(obj.currency);
+  // Currency: supported currency code, default USD
+  let currency = DEFAULT_CURRENCY;
+  const rawCurrency = obj.currency;
+  if (rawCurrency !== undefined && rawCurrency !== null && String(rawCurrency).trim() !== '') {
+    if (typeof rawCurrency !== 'string') {
+      errors.push({ field: 'currency', message: 'Currency must be a string' });
+    } else {
+      const match = rawCurrency.match(/\b([A-Z]{3})\b/i);
+      const code = (match ? match[1] : rawCurrency).trim().toUpperCase();
+      if (!SUPPORTED_CURRENCY_CODES.includes(code as SupportedCurrencyCode)) {
+        errors.push({
+          field: 'currency',
+          message: `Unsupported currency code. Supported currencies: ${SUPPORTED_CURRENCY_CODES.join(', ')}`,
+        });
+      } else {
+        currency = code;
+      }
+    }
+  }
+
+  // Industry: supported industry, default Technology & SaaS
+  let industry: SupportedIndustry = DEFAULT_INDUSTRY;
+  const rawIndustry = obj.industry;
+  if (rawIndustry !== undefined && rawIndustry !== null && String(rawIndustry).trim() !== '') {
+    if (typeof rawIndustry !== 'string') {
+      errors.push({ field: 'industry', message: 'Industry must be a string' });
+    } else {
+      const trimmed = rawIndustry.trim();
+      if (!SUPPORTED_INDUSTRIES.includes(trimmed as SupportedIndustry)) {
+        errors.push({
+          field: 'industry',
+          message: `Unsupported industry. Supported industries: ${SUPPORTED_INDUSTRIES.join(', ')}`,
+        });
+      } else {
+        industry = trimmed as SupportedIndustry;
+      }
+    }
+  }
+
   const rawUserId = obj.userId;
   const userId = typeof rawUserId === 'string' && isValidUUID(rawUserId) ? rawUserId : undefined;
 
@@ -233,7 +311,8 @@ export function validateWorkspaceInput(raw: unknown): ValidationResult<Validated
     data: {
       name,
       currency,
-      startingCash: Math.max(0, startingCash),
+      industry,
+      startingCash,
       alertRunwayThreshold,
       userId,
     },
@@ -248,6 +327,10 @@ export interface ValidatedSignupInput {
   companyName: string;
   email: string;
   password: string;
+  currency: string;
+  industry: SupportedIndustry;
+  startingCash: number;
+  alertRunwayThreshold: number;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -298,6 +381,68 @@ export function validateSignupInput(raw: unknown): ValidationResult<ValidatedSig
   }
   const password = typeof rawPassword === 'string' ? rawPassword : '';
 
+  // Currency (optional, defaults to USD if omitted for backward compatibility)
+  let currency = DEFAULT_CURRENCY;
+  const rawCurrency = obj.currency;
+  if (rawCurrency !== undefined && rawCurrency !== null && String(rawCurrency).trim() !== '') {
+    if (typeof rawCurrency !== 'string') {
+      errors.push({ field: 'currency', message: 'Currency must be a string' });
+    } else {
+      const match = rawCurrency.match(/\b([A-Z]{3})\b/i);
+      const code = (match ? match[1] : rawCurrency).trim().toUpperCase();
+      if (!SUPPORTED_CURRENCY_CODES.includes(code as SupportedCurrencyCode)) {
+        errors.push({
+          field: 'currency',
+          message: `Unsupported currency code. Supported currencies: ${SUPPORTED_CURRENCY_CODES.join(', ')}`,
+        });
+      } else {
+        currency = code;
+      }
+    }
+  }
+
+  // Industry (optional, defaults to Technology & SaaS for backward compatibility)
+  let industry: SupportedIndustry = DEFAULT_INDUSTRY;
+  const rawIndustry = obj.industry;
+  if (rawIndustry !== undefined && rawIndustry !== null && String(rawIndustry).trim() !== '') {
+    if (typeof rawIndustry !== 'string') {
+      errors.push({ field: 'industry', message: 'Industry must be a string' });
+    } else {
+      const trimmed = rawIndustry.trim();
+      if (!SUPPORTED_INDUSTRIES.includes(trimmed as SupportedIndustry)) {
+        errors.push({
+          field: 'industry',
+          message: `Unsupported industry. Supported industries: ${SUPPORTED_INDUSTRIES.join(', ')}`,
+        });
+      } else {
+        industry = trimmed as SupportedIndustry;
+      }
+    }
+  }
+
+  // Starting cash (optional, defaults to 0 for backward compatibility)
+  let startingCash = DEFAULT_STARTING_CASH;
+  if (obj.startingCash !== undefined && obj.startingCash !== null && String(obj.startingCash).trim() !== '') {
+    const parsed = typeof obj.startingCash === 'number' ? obj.startingCash : Number(obj.startingCash);
+    if (!Number.isFinite(parsed) || isNaN(parsed) || parsed < 0) {
+      errors.push({ field: 'startingCash', message: 'Starting cash must be a non-negative finite number' });
+    } else {
+      startingCash = parsed;
+    }
+  }
+
+  // Runway threshold (optional, defaults to 6 for backward compatibility)
+  let alertRunwayThreshold = DEFAULT_RUNWAY_ALERT_THRESHOLD;
+  const rawThreshold = obj.alertRunwayThreshold ?? obj.runwayThreshold;
+  if (rawThreshold !== undefined && rawThreshold !== null && String(rawThreshold).trim() !== '') {
+    const parsed = typeof rawThreshold === 'number' ? rawThreshold : Number(rawThreshold);
+    if (!Number.isFinite(parsed) || isNaN(parsed) || parsed < 1 || parsed > 60) {
+      errors.push({ field: 'alertRunwayThreshold', message: 'Runway threshold must be between 1 and 60 months' });
+    } else {
+      alertRunwayThreshold = parsed;
+    }
+  }
+
   if (errors.length > 0) {
     return { isValid: false, errors };
   }
@@ -309,6 +454,10 @@ export function validateSignupInput(raw: unknown): ValidationResult<ValidatedSig
       companyName,
       email,
       password,
+      currency,
+      industry,
+      startingCash,
+      alertRunwayThreshold,
     },
   };
 }

@@ -148,8 +148,9 @@ export async function createNewWorkspace(
   userId: string,
   name: string,
   currency: string = 'USD',
-  startingCash: number = 500000,
-  alertRunwayThreshold: number = 6
+  startingCash: number = 0,
+  alertRunwayThreshold: number = 6,
+  industry?: string
 ): Promise<DatabaseWorkspace | null> {
   try {
     const {
@@ -175,6 +176,7 @@ export async function createNewWorkspace(
         currency,
         startingCash,
         alertRunwayThreshold,
+        ...(industry ? { industry } : {}),
       }),
     });
 

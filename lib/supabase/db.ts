@@ -166,6 +166,11 @@ export async function fetchWorkspaceAndProfile(
           session?.user?.user_metadata?.company_name ||
           (session?.user?.user_metadata?.full_name ? `${session.user.user_metadata.full_name}'s Business` : 'My Business Workspace');
 
+        const preferredCurrency =
+          session?.user?.user_metadata?.currency || 'USD';
+        const preferredIndustry =
+          session?.user?.user_metadata?.industry || 'Technology & SaaS';
+
         const res = await fetch('/api/workspaces', {
           method: 'POST',
           headers: {
@@ -175,7 +180,8 @@ export async function fetchWorkspaceAndProfile(
           body: JSON.stringify({
             userId: authUserId,
             name: companyName,
-            currency: 'USD',
+            currency: preferredCurrency,
+            industry: preferredIndustry,
             startingCash: 0,
             alertRunwayThreshold: 6,
           }),

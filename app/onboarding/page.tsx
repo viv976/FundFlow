@@ -5,27 +5,14 @@ import { useRouter } from 'next/navigation';
 import { getCurrentAuthUser, createNewWorkspace } from '@/lib/supabase/auth';
 import { supabase } from '@/lib/supabase/client';
 import { useFinance } from '@/lib/store/finance-context';
-
-const CURRENCIES = [
-  { code: 'USD', symbol: '$', name: 'US Dollar (USD)' },
-  { code: 'EUR', symbol: '€', name: 'Euro (EUR)' },
-  { code: 'GBP', symbol: '£', name: 'British Pound (GBP)' },
-  { code: 'INR', symbol: '₹', name: 'Indian Rupee (INR)' },
-  { code: 'CAD', symbol: 'CA$', name: 'Canadian Dollar (CAD)' },
-  { code: 'AUD', symbol: 'AU$', name: 'Australian Dollar (AUD)' },
-  { code: 'SGD', symbol: 'SG$', name: 'Singapore Dollar (SGD)' },
-];
-
-const INDUSTRIES = [
-  'Technology & SaaS',
-  'E-Commerce & Retail',
-  'Fintech & Financial Services',
-  'Healthcare & Biotech',
-  'Food, Beverage & Hospitality',
-  'Agency & Professional Services',
-  'Manufacturing & Logistics',
-  'Other Venture',
-];
+import {
+  SUPPORTED_CURRENCIES,
+  SUPPORTED_INDUSTRIES,
+  DEFAULT_CURRENCY,
+  DEFAULT_INDUSTRY,
+  DEFAULT_STARTING_CASH,
+  DEFAULT_RUNWAY_ALERT_THRESHOLD,
+} from '@/lib/finance/calculator';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -39,19 +26,23 @@ export default function OnboardingPage() {
 
   // Business / Workspace state
   const [businessName, setBusinessName] = useState('');
-  const [industry, setIndustry] = useState('Agency & Professional Services');
-  const [currency, setCurrency] = useState('INR');
-  const [startingCash, setStartingCash] = useState('500000');
-  const [runwayThreshold, setRunwayThreshold] = useState('6');
+  const [industry, setIndustry] = useState<string>(DEFAULT_INDUSTRY);
+  const [currency, setCurrency] = useState<string>(DEFAULT_CURRENCY);
+  const [startingCash, setStartingCash] = useState<string>(String(DEFAULT_STARTING_CASH));
+  const [runwayThreshold, setRunwayThreshold] = useState<string>(String(DEFAULT_RUNWAY_ALERT_THRESHOLD));
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentAuthUserId, setCurrentAuthUserId] = useState<string | null>(null);
   const [currentAuthEmail, setCurrentAuthEmail] = useState<string | null>(null);
 
   useEffect(() => {
     async function checkUser() {
       const user = await getCurrentAuthUser();
-      if (user) {
+      if (user && user.id) {
+        setIsAuthenticated(true);
+        setCurrentAuthUserId(user.id);
         setCurrentAuthEmail(user.email);
         if (user.profile?.full_name && user.profile.full_name !== 'Alex Rivera') {
           setFullName(user.profile.full_name);
@@ -74,24 +65,41 @@ export default function OnboardingPage() {
       return;
     }
 
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setError('Please enter a valid Gmail or Work Email address.');
+    if (!SUPPORTED_INDUSTRIES.includes(industry as typeof SUPPORTED_INDUSTRIES[number])) {
+      setError('Please select a valid industry from the supported list.');
       return;
     }
 
-    if (!password || password.length < 6) {
-      setError('Password must be at least 6 characters long.');
+    if (!SUPPORTED_CURRENCIES.some((c) => c.code === currency)) {
+      setError('Please select a supported reporting currency.');
       return;
     }
 
     const cash = parseFloat(startingCash);
-    if (isNaN(cash) || cash < 0) {
+    if (isNaN(cash) || !Number.isFinite(cash) || cash < 0) {
       setError('Please enter a valid initial cash balance (0 or greater).');
       return;
     }
 
-    const threshold = parseFloat(runwayThreshold) || 6;
+    const threshold = parseFloat(runwayThreshold);
+    if (isNaN(threshold) || !Number.isFinite(threshold) || threshold < 1 || threshold > 60) {
+      setError('Runway threshold must be between 1 and 60 months.');
+      return;
+    }
+
+    // Unauthenticated visitors must provide valid founder credentials
+    const cleanEmail = email.trim().toLowerCase();
+    if (!isAuthenticated) {
+      if (!cleanEmail || !cleanEmail.includes('@')) {
+        setError('Please enter a valid Gmail or Work Email address.');
+        return;
+      }
+
+      if (!password || password.length < 6) {
+        setError('Password must be at least 6 characters long.');
+        return;
+      }
+    }
 
     setIsLoading(true);
 
@@ -100,45 +108,53 @@ export default function OnboardingPage() {
         sessionStorage.removeItem('fundflow_demo_mode_active_v1');
         localStorage.removeItem('fundflow_demo_mode_active_v1');
       }
-      // 1. Setup / register founder account
-      const authSetupRes = await fetch('/api/auth/setup-account', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: cleanEmail,
-          password,
-          fullName: fullName.trim() || 'Founder',
-          phone: phone.trim(),
-        }),
-      });
 
-      const authData = await authSetupRes.json();
-      if (!authSetupRes.ok || !authData.success) {
-        throw new Error(authData.error || 'Failed to configure founder credentials');
-      }
+      let effectiveUserId = currentAuthUserId;
 
-      const userId = authData.userId;
-
-      // 2. Sign in on the client to establish active Supabase session
-      try {
-        const { error: signInErr } = await supabase.auth.signInWithPassword({
-          email: cleanEmail,
-          password,
+      // 1. If not authenticated, setup / register founder account first
+      if (!isAuthenticated) {
+        const authSetupRes = await fetch('/api/auth/setup-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: cleanEmail,
+            password,
+            fullName: fullName.trim() || 'Founder',
+            phone: phone.trim(),
+            industry,
+            currency,
+          }),
         });
-        if (signInErr) {
-          console.warn('Direct sign-in note:', signInErr.message);
+
+        const authData = await authSetupRes.json();
+        if (!authSetupRes.ok || !authData.success) {
+          throw new Error(authData.error || 'Failed to configure founder credentials');
         }
-      } catch (clientAuthErr) {
-        console.warn('Client auth warning:', clientAuthErr);
+
+        effectiveUserId = authData.userId;
+
+        // Sign in on client to establish active session
+        try {
+          const { error: signInErr } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password,
+          });
+          if (signInErr) {
+            console.warn('Direct sign-in note:', signInErr.message);
+          }
+        } catch (clientAuthErr) {
+          console.warn('Client auth warning:', clientAuthErr);
+        }
       }
 
-      // 3. Create workspace linked to authenticated founder
+      // 2. Create workspace linked to authenticated founder
       const created = await createNewWorkspace(
-        userId,
+        effectiveUserId || '',
         businessName.trim(),
         currency,
         cash,
-        threshold
+        threshold,
+        industry
       );
 
       if (created) {
@@ -150,8 +166,8 @@ export default function OnboardingPage() {
               name: created.name,
               owner_id: created.owner_id,
               currency: created.currency || currency,
-              starting_cash: created.starting_cash || cash,
-              alert_runway_threshold: created.alert_runway_threshold || threshold,
+              starting_cash: typeof created.starting_cash === 'number' ? created.starting_cash : cash,
+              alert_runway_threshold: typeof created.alert_runway_threshold === 'number' ? created.alert_runway_threshold : threshold,
               created_at: created.created_at,
             };
             localStorage.setItem('fundflow_workspace_v1', JSON.stringify(mappedWs));
@@ -206,82 +222,99 @@ export default function OnboardingPage() {
         )}
 
         <form onSubmit={handleCreateBusiness} className="space-y-6">
-          {/* Section 1: Founder Account Credentials */}
-          <div className="space-y-3.5 pb-5 border-b border-outline-variant/50">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-[18px]">badge</span>
-                <span>Founder Account Credentials</span>
-              </h2>
-              {currentAuthEmail && currentAuthEmail !== 'alex.rivera@demo.fundflow.app' && (
-                <span className="text-[11px] font-mono-data text-secondary-fixed bg-primary px-2 py-0.5 rounded">
-                  {currentAuthEmail}
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-on-surface mb-1.5">
-                  Full Name / Founder Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Alex Rivera"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-on-surface mb-1.5">
-                  Phone Number (Optional)
-                </label>
-                <input
-                  type="tel"
-                  placeholder="e.g. +91 98765 43210"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono-data"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-on-surface mb-1.5">
-                  Gmail / Work Email *
-                </label>
-                <input
-                  type="email"
-                  required
-                  placeholder="founder@gmail.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono-data"
-                />
-              </div>
-
-              <div>
-                <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-xs font-semibold text-on-surface">
-                    Password *
-                  </label>
-                  <span className="text-[10px] text-outline">Min 6 chars</span>
+          {/* Section 1: Founder Account Credentials or Active Session */}
+          {isAuthenticated ? (
+            <div className="p-4 bg-surface-container-low border border-outline-variant/60 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                  {fullName ? fullName[0]?.toUpperCase() : 'F'}
                 </div>
-                <input
-                  type="password"
-                  required
-                  placeholder="••••••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono-data"
-                />
+                <div>
+                  <p className="text-xs font-semibold text-on-surface">{fullName || 'Founder'}</p>
+                  <p className="text-[11px] text-on-surface-variant font-mono-data">{currentAuthEmail}</p>
+                </div>
+              </div>
+              <span className="text-[10px] uppercase font-mono-data font-bold tracking-wider px-2.5 py-1 rounded-full bg-primary text-secondary-fixed">
+                Active Account
+              </span>
+            </div>
+          ) : (
+            <div className="space-y-3.5 pb-5 border-b border-outline-variant/50">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-[18px]">badge</span>
+                  <span>Founder Account Credentials</span>
+                </h2>
+                {currentAuthEmail && currentAuthEmail !== 'alex.rivera@demo.fundflow.app' && (
+                  <span className="text-[11px] font-mono-data text-secondary-fixed bg-primary px-2 py-0.5 rounded">
+                    {currentAuthEmail}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1.5">
+                    Full Name / Founder Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Alex Rivera"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1.5">
+                    Phone Number (Optional)
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. +91 98765 43210"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono-data"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1.5">
+                    Gmail / Work Email *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="founder@gmail.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono-data"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="block text-xs font-semibold text-on-surface">
+                      Password *
+                    </label>
+                    <span className="text-[10px] text-outline">Min 6 chars</span>
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    placeholder="••••••••••••"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-mono-data"
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Section 2: Business & Workspace Details */}
           <div className="space-y-3.5">
@@ -314,7 +347,7 @@ export default function OnboardingPage() {
                   onChange={(e) => setIndustry(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer"
                 >
-                  {INDUSTRIES.map((ind) => (
+                  {SUPPORTED_INDUSTRIES.map((ind) => (
                     <option key={ind} value={ind}>
                       {ind}
                     </option>
@@ -331,9 +364,9 @@ export default function OnboardingPage() {
                   onChange={(e) => setCurrency(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer font-medium"
                 >
-                  {CURRENCIES.map((curr) => (
+                  {SUPPORTED_CURRENCIES.map((curr) => (
                     <option key={curr.code} value={curr.code}>
-                      {curr.name}
+                      {curr.code} ({curr.symbol}) — {curr.name}
                     </option>
                   ))}
                 </select>
@@ -347,9 +380,10 @@ export default function OnboardingPage() {
                 </label>
                 <input
                   type="number"
-                  step="1000"
+                  step="any"
+                  min="0"
                   required
-                  placeholder="500000"
+                  placeholder="0"
                   value={startingCash}
                   onChange={(e) => setStartingCash(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl font-mono-data text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"

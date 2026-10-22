@@ -94,6 +94,20 @@ describe('Real User Signup & Workspace Provisioning Architecture', () => {
       const data = await res.json();
       expect(data.error).toContain('Password must be at least 6 characters');
     });
+
+    it('rejects signup with unsupported currency code', async () => {
+      const req = createSignupRequest({
+        fullName: 'Alex Rivera',
+        companyName: 'Acme Corp',
+        email: 'founder@acme.com',
+        password: 'ValidPassword123!',
+        currency: 'XYZ',
+      });
+      const res = await signupHandler(req);
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain('Unsupported currency code');
+    });
   });
 
   describe('Existing Account Handling', () => {
@@ -221,8 +235,83 @@ describe('Real User Signup & Workspace Provisioning Architecture', () => {
         expect.anything()
       );
 
+      // Verify workspace was created with USD default fallback
+      expect(mockInsertWs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currency: 'USD',
+          name: 'Brand New Startup LLC',
+          starting_cash: 0,
+        })
+      );
+
       // Verify that no transactions were inserted into the transactions table
       expect(mockAdminFrom).not.toHaveBeenCalledWith('transactions');
+    });
+
+    it('persists selected workspace currency (EUR, INR, GBP) during signup', async () => {
+      const newUserId = '99999999-9999-4999-8999-999999999999';
+      const newWsId = '88888888-8888-4888-8888-888888888888';
+
+      mockSignUp.mockResolvedValueOnce({
+        data: {
+          user: {
+            id: newUserId,
+            email: 'founder@mumbai-tech.in',
+            user_metadata: { full_name: 'INR Founder' },
+          },
+          session: null,
+        },
+        error: null,
+      });
+
+      const mockInsertWs = vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: {
+              id: newWsId,
+              name: 'Mumbai Tech Solutions',
+              slug: 'mumbai-tech-solutions',
+              owner_id: newUserId,
+              currency: 'INR',
+              starting_cash: 0,
+              alert_runway_threshold: 6,
+            },
+            error: null,
+          }),
+        }),
+      });
+
+      mockAdminFrom.mockImplementation((table: string) => {
+        if (table === 'profiles') return { upsert: vi.fn().mockResolvedValue({ error: null }) };
+        if (table === 'workspaces') return {
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [] }) }) }),
+          insert: mockInsertWs,
+        };
+        if (table === 'workspace_members') return { upsert: vi.fn().mockResolvedValue({ error: null }) };
+        if (table === 'transaction_categories') return {
+          select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [] }) }) }),
+          insert: vi.fn().mockResolvedValue({ error: null }),
+        };
+        if (table === 'alert_preferences') return { upsert: vi.fn().mockResolvedValue({ error: null }) };
+        return { select: vi.fn(), insert: vi.fn(), upsert: vi.fn() };
+      });
+
+      const req = createSignupRequest({
+        fullName: 'INR Founder',
+        companyName: 'Mumbai Tech Solutions',
+        email: 'founder@mumbai-tech.in',
+        password: 'ValidPassword123!',
+        currency: 'INR',
+      });
+
+      const res = await signupHandler(req);
+      expect(res.status).toBe(201);
+      expect(mockInsertWs).toHaveBeenCalledWith(
+        expect.objectContaining({
+          currency: 'INR',
+          name: 'Mumbai Tech Solutions',
+        })
+      );
     });
 
     it('preserves Demo Workspace data strictly isolated from real accounts', () => {

@@ -8,6 +8,10 @@ import {
   calculateNetCashFlow,
   calculateTotalFromBreakdown,
   calculateWhatIfScenario,
+  getCurrencyName,
+  getCurrencySymbol,
+  formatCurrency,
+  SUPPORTED_CURRENCIES,
 } from '../../lib/finance/calculator';
 import { Transaction } from '../../types/finance';
 
@@ -126,5 +130,67 @@ describe('Financial Calculator Logic', () => {
     expect(result.projectedRunway).toBeGreaterThan(0);
     expect(result.differenceMonths).toBeDefined();
     expect(result.assumptions.length).toBeGreaterThan(0);
+  });
+
+  describe('Multi-Currency Formatting and Helpers', () => {
+    it('provides all 8 supported currencies with code, symbol, and name', () => {
+      const codes = SUPPORTED_CURRENCIES.map((c) => c.code);
+      expect(codes).toEqual(['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'INR', 'SGD', 'JPY']);
+      expect(SUPPORTED_CURRENCIES.find((c) => c.code === 'INR')?.symbol).toBe('₹');
+      expect(SUPPORTED_CURRENCIES.find((c) => c.code === 'EUR')?.symbol).toBe('€');
+      expect(SUPPORTED_CURRENCIES.find((c) => c.code === 'GBP')?.symbol).toBe('£');
+      expect(SUPPORTED_CURRENCIES.find((c) => c.code === 'USD')?.symbol).toBe('$');
+    });
+
+    it('resolves correct currency names for all supported currencies with USD fallback', () => {
+      expect(getCurrencyName('INR')).toBe('Indian Rupee');
+      expect(getCurrencyName('EUR')).toBe('Euro');
+      expect(getCurrencyName('GBP')).toBe('British Pound');
+      expect(getCurrencyName('USD')).toBe('United States Dollar');
+      expect(getCurrencyName('CAD')).toBe('Canadian Dollar');
+      expect(getCurrencyName('AUD')).toBe('Australian Dollar');
+      expect(getCurrencyName('SGD')).toBe('Singapore Dollar');
+      expect(getCurrencyName('JPY')).toBe('Japanese Yen');
+      expect(getCurrencyName('UNKNOWN')).toBe('United States Dollar');
+      expect(getCurrencyName(undefined)).toBe('United States Dollar');
+    });
+
+    it('resolves correct currency symbols for INR, EUR, GBP, USD, and others', () => {
+      expect(getCurrencySymbol('INR')).toBe('₹');
+      expect(getCurrencySymbol('EUR')).toBe('€');
+      expect(getCurrencySymbol('GBP')).toBe('£');
+      expect(getCurrencySymbol('USD')).toBe('$');
+      expect(getCurrencySymbol('CAD')).toBe('CA$');
+      expect(getCurrencySymbol('AUD')).toBe('AU$');
+      expect(getCurrencySymbol('SGD')).toBe('SG$');
+      expect(getCurrencySymbol('JPY')).toBe('¥');
+      expect(getCurrencySymbol('UNKNOWN')).toBe('$');
+      expect(getCurrencySymbol(undefined)).toBe('$');
+    });
+
+    it('formats monetary values respecting active currency and scale', () => {
+      // Small amounts (formatted with commas and 2 decimals)
+      expect(formatCurrency(1500, 'USD')).toBe('$1,500.00');
+      expect(formatCurrency(1500, 'INR')).toBe('₹1,500.00');
+      expect(formatCurrency(1500, 'EUR')).toBe('€1,500.00');
+      expect(formatCurrency(1500, 'GBP')).toBe('£1,500.00');
+
+      // Thousands (>= 10,000, formatted as K)
+      expect(formatCurrency(50000, 'USD')).toBe('$50K');
+      expect(formatCurrency(500000, 'INR')).toBe('₹500K');
+      expect(formatCurrency(25000, 'EUR')).toBe('€25K');
+      expect(formatCurrency(75000, 'GBP')).toBe('£75K');
+
+      // Millions (>= 1,000,000, formatted as M)
+      expect(formatCurrency(1200000, 'USD')).toBe('$1.20M');
+      expect(formatCurrency(5000000, 'INR')).toBe('₹5.00M');
+      expect(formatCurrency(2500000, 'EUR')).toBe('€2.50M');
+      expect(formatCurrency(10000000, 'GBP')).toBe('£10.00M');
+
+      // Negative values
+      expect(formatCurrency(-5000, 'INR')).toBe('-₹5,000.00');
+      expect(formatCurrency(-50000, 'EUR')).toBe('-€50K');
+      expect(formatCurrency(-1500000, 'GBP')).toBe('-£1.50M');
+    });
   });
 });

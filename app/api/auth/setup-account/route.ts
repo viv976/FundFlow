@@ -4,7 +4,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, password, fullName = 'Founder', phone = '' } = body;
+    const { email, password, fullName = 'Founder', phone = '', industry, currency } = body;
 
     if (!email || typeof email !== 'string' || !email.includes('@')) {
       return NextResponse.json(
@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
         user_metadata: {
           full_name: cleanFullName,
           phone: cleanPhone,
+          industry: typeof industry === 'string' && industry.trim() ? industry.trim() : 'Technology & SaaS',
+          currency: typeof currency === 'string' && currency.trim() ? currency.trim() : 'USD',
         },
       });
 

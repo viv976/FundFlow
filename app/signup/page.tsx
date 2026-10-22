@@ -5,6 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { useFinance } from '@/lib/store/finance-context';
+import {
+  SUPPORTED_CURRENCIES,
+  SUPPORTED_INDUSTRIES,
+  DEFAULT_CURRENCY,
+  DEFAULT_INDUSTRY,
+  DEFAULT_STARTING_CASH,
+  DEFAULT_RUNWAY_ALERT_THRESHOLD,
+} from '@/lib/finance/calculator';
 
 export default function SignupPage() {
   const router = useRouter();
@@ -13,6 +21,10 @@ export default function SignupPage() {
   // Form fields
   const [fullName, setFullName] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [industry, setIndustry] = useState<string>(DEFAULT_INDUSTRY);
+  const [currency, setCurrency] = useState<string>(DEFAULT_CURRENCY);
+  const [startingCash, setStartingCash] = useState<string>(String(DEFAULT_STARTING_CASH));
+  const [runwayThreshold, setRunwayThreshold] = useState<string>(String(DEFAULT_RUNWAY_ALERT_THRESHOLD));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -39,6 +51,23 @@ export default function SignupPage() {
     const cleanCompanyName = companyName.trim();
     if (!cleanCompanyName) {
       setError('Please enter your business or company name.');
+      return;
+    }
+
+    if (!SUPPORTED_INDUSTRIES.includes(industry as typeof SUPPORTED_INDUSTRIES[number])) {
+      setError('Please select a valid industry from the supported list.');
+      return;
+    }
+
+    const cash = parseFloat(startingCash);
+    if (isNaN(cash) || !Number.isFinite(cash) || cash < 0) {
+      setError('Please enter a valid starting cash balance (0 or greater).');
+      return;
+    }
+
+    const threshold = parseFloat(runwayThreshold);
+    if (isNaN(threshold) || !Number.isFinite(threshold) || threshold < 1 || threshold > 60) {
+      setError('Runway threshold must be between 1 and 60 months.');
       return;
     }
 
@@ -72,6 +101,10 @@ export default function SignupPage() {
         body: JSON.stringify({
           fullName: cleanFullName,
           companyName: cleanCompanyName,
+          industry,
+          currency,
+          startingCash: cash,
+          alertRunwayThreshold: threshold,
           email: cleanEmail,
           password,
         }),
@@ -243,6 +276,77 @@ export default function SignupPage() {
                   disabled={isLoading}
                   className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline/60 disabled:opacity-60"
                 />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-on-surface mb-1.5">
+                  Industry / Sector
+                </label>
+                <select
+                  value={industry}
+                  onChange={(e) => setIndustry(e.target.value)}
+                  disabled={isLoading}
+                  className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-60 cursor-pointer"
+                >
+                  {SUPPORTED_INDUSTRIES.map((ind) => (
+                    <option key={ind} value={ind}>
+                      {ind}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-on-surface mb-1.5">
+                  Base Reporting Currency
+                </label>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  disabled={isLoading}
+                  className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-60 cursor-pointer"
+                >
+                  {SUPPORTED_CURRENCIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code} ({c.symbol}) — {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1.5">
+                    Initial Cash Balance ({currency})
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    min="0"
+                    placeholder="0"
+                    value={startingCash}
+                    onChange={(e) => setStartingCash(e.target.value)}
+                    disabled={isLoading}
+                    className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-60 font-mono-data"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-on-surface mb-1.5">
+                    Runway Alert Threshold
+                  </label>
+                  <select
+                    value={runwayThreshold}
+                    onChange={(e) => setRunwayThreshold(e.target.value)}
+                    disabled={isLoading}
+                    className="w-full px-3.5 py-2.5 bg-surface-bright border border-outline-variant rounded-xl text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all disabled:opacity-60 cursor-pointer"
+                  >
+                    <option value="3">3 Months (Aggressive)</option>
+                    <option value="6">6 Months (Standard)</option>
+                    <option value="9">9 Months (Conservative)</option>
+                    <option value="12">12 Months (Cautious)</option>
+                  </select>
+                </div>
               </div>
 
               <div>

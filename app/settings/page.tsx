@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useFinance } from '@/lib/store/finance-context';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
+import { getCurrencyName, getCurrencySymbol } from '@/lib/finance/calculator';
 
 export default function SettingsPage() {
   const {
@@ -104,7 +105,7 @@ export default function SettingsPage() {
             </label>
             <input
               type="text"
-              value={`${workspace.currency} (United States Dollar)`}
+              value={`${workspace.currency} (${getCurrencyName(workspace.currency)})`}
               disabled
               className="w-full px-3 py-2 bg-surface-container-low border border-outline-variant rounded font-body-sm text-sm text-on-surface cursor-not-allowed opacity-90"
             />
@@ -184,7 +185,7 @@ export default function SettingsPage() {
 
           <div>
             <label className="block text-xs font-label-md text-on-surface-variant mb-1 font-semibold">
-              Min Cash Floor ($)
+              Min Cash Floor ({getCurrencySymbol(workspace.currency)})
             </label>
             <input
               type="number"

@@ -279,5 +279,203 @@ describe('Validation Boundaries', () => {
         expect(res.data.email).toBe('alex@acme.com');
       }
     });
+
+    it('defaults currency to USD when omitted', () => {
+      const res = validateSignupInput({
+        fullName: 'Alex Rivera',
+        companyName: 'Acme Technologies',
+        email: 'alex@acme.com',
+        password: 'Password123',
+      });
+      expect(res.isValid).toBe(true);
+      if (res.isValid) {
+        expect(res.data.currency).toBe('USD');
+      }
+    });
+
+    it('accepts all supported currency codes: USD, EUR, GBP, CAD, AUD, INR, SGD, JPY', () => {
+      const currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'INR', 'SGD', 'JPY'];
+      for (const cur of currencies) {
+        const res = validateSignupInput({
+          fullName: 'Alex Rivera',
+          companyName: 'Acme Technologies',
+          email: 'alex@acme.com',
+          password: 'Password123',
+          currency: cur,
+        });
+        expect(res.isValid).toBe(true);
+        if (res.isValid) {
+          expect(res.data.currency).toBe(cur);
+        }
+      }
+    });
+
+    it('rejects unsupported currency codes', () => {
+      const res = validateSignupInput({
+        fullName: 'Alex Rivera',
+        companyName: 'Acme Technologies',
+        email: 'alex@acme.com',
+        password: 'Password123',
+        currency: 'XYZ',
+      });
+      expect(res.isValid).toBe(false);
+      if (!res.isValid) {
+        expect(res.errors.some((e) => e.field === 'currency')).toBe(true);
+      }
+    });
+
+    it('defaults industry to Technology & SaaS, starting cash to 0, and threshold to 6 when omitted', () => {
+      const res = validateSignupInput({
+        fullName: 'Alex Rivera',
+        companyName: 'Acme Technologies',
+        email: 'alex@acme.com',
+        password: 'Password123',
+      });
+      expect(res.isValid).toBe(true);
+      if (res.isValid) {
+        expect(res.data.industry).toBe('Technology & SaaS');
+        expect(res.data.startingCash).toBe(0);
+        expect(res.data.alertRunwayThreshold).toBe(6);
+      }
+    });
+
+    it('accepts valid custom industry, starting cash, and runway threshold', () => {
+      const res = validateSignupInput({
+        fullName: 'Alex Rivera',
+        companyName: 'Acme Technologies',
+        email: 'alex@acme.com',
+        password: 'Password123',
+        industry: 'Fintech & Financial Services',
+        startingCash: 250000,
+        alertRunwayThreshold: 12,
+      });
+      expect(res.isValid).toBe(true);
+      if (res.isValid) {
+        expect(res.data.industry).toBe('Fintech & Financial Services');
+        expect(res.data.startingCash).toBe(250000);
+        expect(res.data.alertRunwayThreshold).toBe(12);
+      }
+    });
+
+    it('rejects unsupported industry', () => {
+      const res = validateSignupInput({
+        fullName: 'Alex Rivera',
+        companyName: 'Acme Technologies',
+        email: 'alex@acme.com',
+        password: 'Password123',
+        industry: 'Space Mining',
+      });
+      expect(res.isValid).toBe(false);
+      if (!res.isValid) {
+        expect(res.errors.some((e) => e.field === 'industry')).toBe(true);
+      }
+    });
+
+    it('rejects negative or non-finite starting cash', () => {
+      const resNegative = validateSignupInput({
+        fullName: 'Alex Rivera',
+        companyName: 'Acme Technologies',
+        email: 'alex@acme.com',
+        password: 'Password123',
+        startingCash: -500,
+      });
+      expect(resNegative.isValid).toBe(false);
+      if (!resNegative.isValid) {
+        expect(resNegative.errors.some((e) => e.field === 'startingCash')).toBe(true);
+      }
+
+      const resInfinity = validateSignupInput({
+        fullName: 'Alex Rivera',
+        companyName: 'Acme Technologies',
+        email: 'alex@acme.com',
+        password: 'Password123',
+        startingCash: Infinity,
+      });
+      expect(resInfinity.isValid).toBe(false);
+      if (!resInfinity.isValid) {
+        expect(resInfinity.errors.some((e) => e.field === 'startingCash')).toBe(true);
+      }
+    });
+
+    it('rejects runway threshold outside 1-60 months', () => {
+      const resZero = validateSignupInput({
+        fullName: 'Alex Rivera',
+        companyName: 'Acme Technologies',
+        email: 'alex@acme.com',
+        password: 'Password123',
+        alertRunwayThreshold: 0,
+      });
+      expect(resZero.isValid).toBe(false);
+      if (!resZero.isValid) {
+        expect(resZero.errors.some((e) => e.field === 'alertRunwayThreshold')).toBe(true);
+      }
+
+      const resTooHigh = validateSignupInput({
+        fullName: 'Alex Rivera',
+        companyName: 'Acme Technologies',
+        email: 'alex@acme.com',
+        password: 'Password123',
+        alertRunwayThreshold: 61,
+      });
+      expect(resTooHigh.isValid).toBe(false);
+      if (!resTooHigh.isValid) {
+        expect(resTooHigh.errors.some((e) => e.field === 'alertRunwayThreshold')).toBe(true);
+      }
+    });
+  });
+
+  describe('validateWorkspaceInput defaults & boundaries', () => {
+    it('defaults currency, industry, starting cash, and threshold when omitted', () => {
+      const res = validateWorkspaceInput({ name: 'Acme Next' });
+      expect(res.isValid).toBe(true);
+      if (res.isValid) {
+        expect(res.data.name).toBe('Acme Next');
+        expect(res.data.currency).toBe('USD');
+        expect(res.data.industry).toBe('Technology & SaaS');
+        expect(res.data.startingCash).toBe(0);
+        expect(res.data.alertRunwayThreshold).toBe(6);
+      }
+    });
+
+    it('accepts valid custom values for workspace input', () => {
+      const res = validateWorkspaceInput({
+        name: 'Acme Healthcare',
+        currency: 'EUR',
+        industry: 'Healthcare & Biotech',
+        startingCash: 500000,
+        alertRunwayThreshold: 10,
+      });
+      expect(res.isValid).toBe(true);
+      if (res.isValid) {
+        expect(res.data.currency).toBe('EUR');
+        expect(res.data.industry).toBe('Healthcare & Biotech');
+        expect(res.data.startingCash).toBe(500000);
+        expect(res.data.alertRunwayThreshold).toBe(10);
+      }
+    });
+
+    it('rejects negative starting cash in validateWorkspaceInput', () => {
+      const res = validateWorkspaceInput({ name: 'Acme Bad', startingCash: -1 });
+      expect(res.isValid).toBe(false);
+      if (!res.isValid) {
+        expect(res.errors.some((e) => e.field === 'startingCash')).toBe(true);
+      }
+    });
+
+    it('rejects invalid runway threshold in validateWorkspaceInput', () => {
+      const res = validateWorkspaceInput({ name: 'Acme Bad', alertRunwayThreshold: 100 });
+      expect(res.isValid).toBe(false);
+      if (!res.isValid) {
+        expect(res.errors.some((e) => e.field === 'alertRunwayThreshold')).toBe(true);
+      }
+    });
+
+    it('rejects invalid industry in validateWorkspaceInput', () => {
+      const res = validateWorkspaceInput({ name: 'Acme Bad', industry: 'Crypto Moon' });
+      expect(res.isValid).toBe(false);
+      if (!res.isValid) {
+        expect(res.errors.some((e) => e.field === 'industry')).toBe(true);
+      }
+    });
   });
 });

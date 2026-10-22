@@ -14,13 +14,14 @@ import {
   MonthlyTrajectoryPoint,
   SavedScenarioModel,
 } from '@/types/finance';
-import { formatCurrency } from '@/lib/finance/calculator';
+import { formatCurrency, getCurrencySymbol } from '@/lib/finance/calculator';
 
 
 
 export default function ScenariosPage() {
   const { scenarioBaseline, workspace } = useFinance();
   const currency = workspace.currency || 'USD';
+  const currencySymbol = getCurrencySymbol(currency);
 
   // In-memory scenario adjustments (never persisted to financial ledger)
   const [assumptions, setAssumptions] = useState<ScenarioAssumptions>(DEFAULT_SCENARIO_ASSUMPTIONS);
@@ -333,9 +334,9 @@ export default function ScenariosPage() {
               className="w-full accent-primary cursor-pointer"
             />
             <div className="flex justify-between text-[10px] font-mono-data text-on-surface-variant">
-              <span>-$50K/mo</span>
-              <span>Baseline ($0)</span>
-              <span>+$100K/mo</span>
+              <span>-{currencySymbol}50K/mo</span>
+              <span>Baseline ({currencySymbol}0)</span>
+              <span>+{currencySymbol}100K/mo</span>
             </div>
           </div>
 
@@ -400,7 +401,7 @@ export default function ScenariosPage() {
             <div className="flex items-center justify-between flex-wrap gap-2 pt-1">
               <span className="text-[11px] text-on-surface-variant">Average Cost Per Role:</span>
               <div className="flex items-center gap-1">
-                <span className="text-xs font-mono-data text-on-surface-variant">$</span>
+                <span className="text-xs font-mono-data text-on-surface-variant">{currencySymbol}</span>
                 <input
                   type="number"
                   min={1000}
@@ -447,9 +448,9 @@ export default function ScenariosPage() {
               className="w-full accent-primary cursor-pointer"
             />
             <div className="flex justify-between text-[10px] font-mono-data text-on-surface-variant">
-              <span>-$20K/mo</span>
-              <span>Baseline ($0)</span>
-              <span>+$50K/mo</span>
+              <span>-{currencySymbol}20K/mo</span>
+              <span>Baseline ({currencySymbol}0)</span>
+              <span>+{currencySymbol}50K/mo</span>
             </div>
           </div>
 
@@ -483,9 +484,9 @@ export default function ScenariosPage() {
               className="w-full accent-secondary cursor-pointer"
             />
             <div className="flex justify-between text-[10px] font-mono-data text-on-surface-variant">
-              <span>-$10K/mo</span>
-              <span>Baseline ($0)</span>
-              <span>+$30K/mo</span>
+              <span>-{currencySymbol}10K/mo</span>
+              <span>Baseline ({currencySymbol}0)</span>
+              <span>+{currencySymbol}30K/mo</span>
             </div>
           </div>
 
@@ -520,9 +521,9 @@ export default function ScenariosPage() {
             />
 
             <div className="flex justify-between text-[10px] font-mono-data text-on-surface-variant">
-              <span>-$20K/mo</span>
-              <span>Baseline ($0)</span>
-              <span>+$60K/mo</span>
+              <span>-{currencySymbol}20K/mo</span>
+              <span>Baseline ({currencySymbol}0)</span>
+              <span>+{currencySymbol}60K/mo</span>
             </div>
           </div>
         </div>

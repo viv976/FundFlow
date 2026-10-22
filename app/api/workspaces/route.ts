@@ -174,6 +174,24 @@ export async function POST(req: NextRequest) {
       console.warn('Non-fatal note inserting default categories:', catErr);
     }
 
+    // 7. Provision Default Alert Preferences matching the workspace setting
+    try {
+      await supabase.from('alert_preferences').upsert(
+        {
+          workspace_id: createdWorkspace.id,
+          runway_threshold_months: numThreshold,
+          expense_spike_percentage: 40.0,
+          cash_minimum_threshold: 50000.0,
+          large_transaction_threshold: 10000.0,
+          email_notifications_enabled: true,
+          slack_notifications_enabled: false,
+        },
+        { onConflict: 'workspace_id' }
+      );
+    } catch (prefErr) {
+      console.warn('Non-fatal note initializing alert preferences:', prefErr);
+    }
+
     return NextResponse.json(
       {
         success: true,
